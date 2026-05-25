@@ -1,0 +1,33 @@
+services:
+  api-host-rag:
+    build:
+      context: ./apps/api-host-rag
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - chroma
+
+  web-react:
+    build:
+      context: ./apps/web-react
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api-host-rag
+
+  chroma:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+
+volumes:
+  chroma-data:
+

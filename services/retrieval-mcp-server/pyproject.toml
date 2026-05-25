@@ -1,0 +1,9 @@
+[project]
+name = "carecontext-retrieval-mcp-server"
+version = "0.1.0"
+description = "Retrieval tooling MCP server for CareContext AI."
+requires-python = ">=3.12"
+dependencies = [
+  "chromadb>=0.5.0"
+]
+

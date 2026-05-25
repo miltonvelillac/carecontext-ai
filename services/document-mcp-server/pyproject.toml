@@ -1,0 +1,9 @@
+[project]
+name = "carecontext-document-mcp-server"
+version = "0.1.0"
+description = "Document tooling MCP server for CareContext AI."
+requires-python = ">=3.12"
+dependencies = [
+  "pypdf>=5.0.0"
+]
+

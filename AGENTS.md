@@ -312,16 +312,16 @@ Use the same monorepo philosophy:
 
 ## 14) Remaining Questions to Finalize Before Build
 
-1. **Safety strictness**: should risky questions be blocked, redirected, or answered with strong caveats?
-2. **Initial providers**: which provider adapters should be implemented first for LLM, embeddings, STT, and TTS?
-3. **Curated corpus**: which trusted seed documents should be included first?
-4. **Timeline**: what is your target date for MVP and portfolio demo?
+1. **Safety strictness:** normal questions get grounded answers with citations and a disclaimer; sensitive medical questions get strong caveats; crisis/self-harm/harm-to-others bypass normal RAG and redirect to immediate help guidance.
+2. **Initial providers:** OpenAI adapters for LLM, embeddings, STT, and TTS, plus mock providers for tests. The application core remains provider-agnostic.
+3. **Curated corpus:** start with 3-5 trusted public documents covering anxiety, sleep, stress, general mental wellbeing, and educational-use limits.
+4. **Timeline:** define after the first scaffold and API contracts are in place.
 
 ---
 
 ## 15) Recommended Next Step
 
-Lock the remaining decisions above, then generate:
+Generate:
 
 - a finalized `README` for the new project,
 - detailed folder tree,
