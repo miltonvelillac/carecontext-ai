@@ -185,6 +185,14 @@ Rules for MVP:
 - **Synthesizer Agent:** composes response grounded in approved chunks.
 - **Critic/Citation Agent:** validates claims against citations and flags unsupported statements.
 
+### Ingestion graph mode (portfolio showcase)
+
+- **Deterministic Detector:** inspects MIME type, extension, magic bytes, and basic file signals.
+- **Document Classifier Agent:** uses an LLM to recommend document type, extraction strategy, and MCP server/tool.
+- **Router Gate:** validates the recommendation against confidence thresholds and an allowlist before any MCP tool runs.
+- **Metadata Enrichment Agent:** suggests language, topic tags, sections, and quality signals.
+- **Indexing Verifier Agent:** checks that chunks and citations are retrieval-ready.
+
 ### Why this split
 
 - Better debuggability.
