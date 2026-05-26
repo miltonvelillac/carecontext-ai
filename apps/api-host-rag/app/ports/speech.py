@@ -14,11 +14,14 @@ class AudioResult(BaseModel):
 
 
 class SpeechToTextProvider(Protocol):
+    """Strategy port for speech-to-text providers."""
+
     async def transcribe(self, audio: bytes, content_type: str) -> TranscriptionResult:
         ...
 
 
 class TextToSpeechProvider(Protocol):
+    """Strategy port for text-to-speech providers."""
+
     async def synthesize(self, text: str, voice: str | None = None) -> AudioResult:
         ...
-

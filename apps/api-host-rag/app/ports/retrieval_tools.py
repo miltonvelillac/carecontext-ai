@@ -36,6 +36,12 @@ class RerankedChunk(BaseModel):
 
 
 class RetrievalToolsPort(Protocol):
+    """Port for indexing and retrieval operations.
+
+    Strategy plus Ports and Adapters: the core RAG workflow can use this
+    contract while the concrete retrieval strategy can change underneath.
+    """
+
     async def upsert_chunks(self, chunks: list[DocumentChunk]) -> UpsertChunksResult:
         ...
 

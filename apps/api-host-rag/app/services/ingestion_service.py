@@ -1,3 +1,9 @@
+"""Ingestion use cases.
+
+Service Layer: routes translate HTTP into Python values, then this module
+coordinates ports such as document processing and retrieval indexing.
+"""
+
 from app.ports.document_tools import DocumentToolsPort
 from app.ports.retrieval_tools import RetrievalToolsPort
 from app.schemas.common import DocumentStatus, LanguageCode, SourceType

@@ -8,6 +8,12 @@ from carecontext_contracts.document_mcp import (
 
 
 class DocumentToolsPort(Protocol):
+    """Port for document processing capabilities.
+
+    Ports and Adapters: services depend on this protocol instead of depending
+    on a concrete parser, MCP client, HTTP client, or vendor SDK.
+    """
+
     async def extract_text_from_pdf(
         self,
         content: bytes,

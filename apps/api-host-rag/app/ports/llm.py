@@ -15,6 +15,11 @@ class LlmResponse(BaseModel):
 
 
 class LlmProvider(Protocol):
+    """Strategy port for text generation providers.
+
+    Strategy Pattern: OpenAI, mock, or future local/cloud LLM providers can
+    implement this same interface without changing query orchestration code.
+    """
+
     async def generate(self, request: LlmRequest) -> LlmResponse:
         ...
-

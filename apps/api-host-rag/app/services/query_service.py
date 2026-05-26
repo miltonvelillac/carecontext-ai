@@ -1,3 +1,9 @@
+"""Query use cases.
+
+Service Layer: API routes delegate query workflows here so orchestration can
+depend on ports and DTOs instead of FastAPI request objects.
+"""
+
 from carecontext_contracts.common import ProviderName
 
 from app.schemas.audio import TextToSpeechResult, TranscriptionResult

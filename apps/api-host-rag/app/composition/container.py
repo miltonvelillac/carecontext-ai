@@ -59,6 +59,8 @@ class AppContainer:
 
 
 def build_document_tools(settings: Settings) -> DocumentToolsPort:
+    """Factory function that selects the concrete document tools adapter."""
+
     if settings.document_mcp_transport != McpTransport.STDIO:
         raise ValueError(
             "Unsupported Document MCP transport "
@@ -72,10 +74,14 @@ def build_document_tools(settings: Settings) -> DocumentToolsPort:
 
 
 def build_retrieval_tools(settings: Settings) -> RetrievalToolsPort:
+    """Factory function for the retrieval tools strategy."""
+
     del settings
     return MockRetrievalTools()
 
 
 def build_document_repository(settings: Settings) -> DocumentRepositoryPort:
+    """Factory function for the document repository implementation."""
+
     del settings
     return MockDocumentRepository()

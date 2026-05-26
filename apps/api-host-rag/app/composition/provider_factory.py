@@ -8,6 +8,8 @@ def require_supported_provider(
     supported: set[ProviderName],
     provider_type: ProviderCapability,
 ) -> ProviderName:
+    """Validate that a selected provider strategy is supported."""
+
     if provider not in supported:
         supported_list = ", ".join(sorted(supported))
         raise ValueError(f"Unsupported {provider_type} provider '{provider}'. Supported: {supported_list}")
@@ -15,6 +17,8 @@ def require_supported_provider(
 
 
 def validate_provider_settings(settings: Settings) -> None:
+    """Strategy validation for provider-agnostic runtime settings."""
+
     supported_providers = {ProviderName.OPENAI, ProviderName.MOCK}
     require_supported_provider(settings.llm_provider, supported_providers, ProviderCapability.LLM)
     require_supported_provider(
