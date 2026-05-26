@@ -18,6 +18,21 @@ from app.ports.retrieval_tools import RetrievalToolsPort
 
 
 class AppContainer:
+    """Composition root for application dependencies.
+
+    This class is where dependency injection is wired: app code asks for ports
+    such as `DocumentToolsPort`, and the container decides which concrete
+    adapter implements that port, such as `DocumentMcpClient`.
+
+    Patterns applied here:
+    - Dependency Injection: routers/services receive dependencies instead of
+      constructing adapters directly.
+    - Ports and Adapters: the app depends on port interfaces while this layer
+      selects concrete adapters.
+    - Lazy Singleton per app instance: each dependency is built once on first
+      access and then reused for the FastAPI application lifetime.
+    """
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._document_tools: DocumentToolsPort | None = None

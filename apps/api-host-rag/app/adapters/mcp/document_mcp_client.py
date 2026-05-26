@@ -22,6 +22,17 @@ class DocumentMcpClientError(RuntimeError):
 
 
 class DocumentMcpClient:
+    """Adapter that implements document tooling through a Document MCP server.
+
+    This class belongs to the adapter layer in the Ports and Adapters pattern:
+    the application core depends on `DocumentToolsPort`, while this adapter
+    translates those port methods into MCP tool calls over STDIO.
+
+    The adapter hides MCP-specific details from routers and services, including
+    base64 file transport, tool names, request argument names, response parsing,
+    and error normalization.
+    """
+
     def __init__(
         self,
         *,
