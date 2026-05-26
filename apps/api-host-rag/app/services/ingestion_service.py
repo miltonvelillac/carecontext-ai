@@ -5,7 +5,7 @@ from app.schemas.documents import DocumentChunk, DocumentMetadata
 from app.schemas.ingestion import CuratedSyncResponse, IngestionJobResponse
 
 
-def parse_topic_tags(topic_tags: str | None) -> list[str]:
+def _parse_topic_tags(topic_tags: str | None) -> list[str]:
     if not topic_tags:
         return []
     return [tag.strip() for tag in topic_tags.split(",") if tag.strip()]
@@ -29,7 +29,7 @@ async def upload_document(
     tool_metadata = await document_tools.get_document_metadata(cleaned.text, safe_filename, title)
 
     resolved_title = title or tool_metadata.title or safe_filename
-    resolved_topic_tags = parse_topic_tags(topic_tags) or tool_metadata.topic_tags
+    resolved_topic_tags = _parse_topic_tags(topic_tags) or tool_metadata.topic_tags
     resolved_language = language if language != LanguageCode.AUTO else tool_metadata.language
 
     document = DocumentMetadata(

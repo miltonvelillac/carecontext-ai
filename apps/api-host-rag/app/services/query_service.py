@@ -7,7 +7,7 @@ from app.ports.retrieval_tools import RetrievalFilter as PortRetrievalFilter
 from app.ports.retrieval_tools import RetrievalToolsPort, RetrievedChunk
 
 
-def mock_safety() -> SafetyAssessment:
+def _mock_safety() -> SafetyAssessment:
     return SafetyAssessment(
         risk_level=SafetyRiskLevel.LOW,
         action=SafetyAction.ALLOW,
@@ -65,7 +65,7 @@ async def answer_text_query(
             "placeholder citation until retrieval and synthesis are implemented."
         ),
         citations=[_to_citation(result) for result in results],
-        safety=mock_safety(),
+        safety=_mock_safety(),
         retrieved_context=[_to_retrieved_context(result) for result in results],
         tts=TextToSpeechResult(audio_id="mock-tts", provider="mock", model="mock-tts")
         if request.include_tts
@@ -96,7 +96,7 @@ async def answer_audio_query(
             "placeholder RAG contract used by text queries."
         ),
         citations=[_to_citation(result) for result in results],
-        safety=mock_safety(),
+        safety=_mock_safety(),
         retrieved_context=[_to_retrieved_context(result) for result in results],
         transcription=transcription,
         tts=TextToSpeechResult(audio_id="mock-tts", provider="mock", model="mock-tts")

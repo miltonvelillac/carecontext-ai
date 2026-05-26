@@ -1,7 +1,5 @@
-from app.schemas.citations import Citation
 from app.schemas.common import DocumentStatus, LanguageCode, SourceType
 from app.schemas.documents import DocumentChunk, DocumentSummary
-from app.schemas.query import RetrievedContextChunk
 
 MOCK_DOCUMENT = DocumentSummary(
     doc_id="curated-sleep-basics",
@@ -38,27 +36,4 @@ def list_mock_chunks(doc_id: str) -> list[DocumentChunk]:
         return []
     return [MOCK_CHUNK]
 
-
-def mock_citation(score: float = 0.92) -> Citation:
-    return Citation(
-        doc_id=MOCK_CHUNK.doc_id,
-        title=MOCK_CHUNK.title,
-        chunk_id=MOCK_CHUNK.chunk_id,
-        snippet=MOCK_CHUNK.text,
-        section=MOCK_CHUNK.section,
-        score=score,
-        metadata=MOCK_CHUNK.metadata,
-    )
-
-
-def mock_retrieved_context(score: float = 0.92) -> RetrievedContextChunk:
-    return RetrievedContextChunk(
-        doc_id=MOCK_CHUNK.doc_id,
-        title=MOCK_CHUNK.title,
-        chunk_id=MOCK_CHUNK.chunk_id,
-        snippet=MOCK_CHUNK.text,
-        score=score,
-        section=MOCK_CHUNK.section,
-        metadata=MOCK_CHUNK.metadata,
-    )
 
