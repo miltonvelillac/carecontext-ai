@@ -53,7 +53,10 @@ def _detect_section_titles(text: str) -> list[str]:
         if not candidate or len(candidate) > 120:
             continue
         is_markdown_heading = line.lstrip().startswith("#")
-        is_numbered_heading = re.match(r"^\d+(\.\d+)*[.)]?\s+[A-ZÁÉÍÓÚÜÑ]", candidate)
+        numbered_heading_match = re.match(r"^\d+(\.\d+)*[.)]?\s+(.+)", candidate)
+        is_numbered_heading = bool(
+            numbered_heading_match and numbered_heading_match.group(2)[:1].isupper()
+        )
         is_short_title = len(candidate.split()) <= 10 and candidate[:1].isupper()
         if is_markdown_heading or is_numbered_heading or is_short_title:
             titles.append(candidate)
