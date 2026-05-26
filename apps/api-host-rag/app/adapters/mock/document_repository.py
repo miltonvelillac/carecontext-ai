@@ -1,3 +1,5 @@
+from carecontext_contracts.common import MetadataKey, MetadataValue
+
 from app.adapters.mock.corpus import list_mock_chunks, list_mock_documents
 from app.ports.document_repository import DocumentRepositoryPort
 from app.schemas.documents import DocumentDetail, DocumentSummary
@@ -13,6 +15,6 @@ class MockDocumentRepository(DocumentRepositoryPort):
                 return DocumentDetail(
                     **document.model_dump(),
                     chunks=list_mock_chunks(doc_id),
-                    metadata={"mock": "true"},
+                    metadata={MetadataKey.MOCK: MetadataValue.TRUE},
                 )
         return None

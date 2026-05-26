@@ -1,3 +1,5 @@
+from carecontext_contracts.common import ProviderName
+
 from app.schemas.audio import TextToSpeechResult, TranscriptionResult
 from app.schemas.citations import Citation
 from app.schemas.common import LanguageCode
@@ -67,7 +69,7 @@ async def answer_text_query(
         citations=[_to_citation(result) for result in results],
         safety=_mock_safety(),
         retrieved_context=[_to_retrieved_context(result) for result in results],
-        tts=TextToSpeechResult(audio_id="mock-tts", provider="mock", model="mock-tts")
+        tts=TextToSpeechResult(audio_id="mock-tts", provider=ProviderName.MOCK, model="mock-tts")
         if request.include_tts
         else None,
         trace_id="mock-trace-text",
@@ -87,7 +89,7 @@ async def answer_audio_query(
     transcription = TranscriptionResult(
         text=f"Mock transcription for {filename or 'audio input'}",
         language=request.language if request.language != LanguageCode.AUTO else None,
-        provider="mock",
+        provider=ProviderName.MOCK,
         model="mock-stt",
     )
     return RagAnswerResponse(
@@ -99,7 +101,7 @@ async def answer_audio_query(
         safety=_mock_safety(),
         retrieved_context=[_to_retrieved_context(result) for result in results],
         transcription=transcription,
-        tts=TextToSpeechResult(audio_id="mock-tts", provider="mock", model="mock-tts")
+        tts=TextToSpeechResult(audio_id="mock-tts", provider=ProviderName.MOCK, model="mock-tts")
         if request.include_tts
         else None,
         trace_id="mock-trace-audio",

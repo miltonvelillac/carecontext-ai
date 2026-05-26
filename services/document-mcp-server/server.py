@@ -1,3 +1,4 @@
+from carecontext_contracts.common import McpTransport, MimeType
 from carecontext_contracts.document_mcp import (
     CleanedDocumentText,
     DocumentToolMetadata,
@@ -17,7 +18,7 @@ mcp = FastMCP("carecontext-document-tools")
 def extract_text_from_pdf(
     content_base64: str,
     filename: str,
-    content_type: str | None = "application/pdf",
+    content_type: str | None = MimeType.APPLICATION_PDF,
 ) -> ExtractedDocument:
     """Extract text and basic metadata from a base64-encoded PDF file."""
     return extract_pdf_text(content_base64, filename, content_type)
@@ -40,7 +41,7 @@ def get_document_metadata(
 
 
 def main() -> None:
-    mcp.run(transport="stdio")
+    mcp.run(transport=McpTransport.STDIO)
 
 
 if __name__ == "__main__":

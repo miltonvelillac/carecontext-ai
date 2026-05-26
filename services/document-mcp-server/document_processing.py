@@ -6,7 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from carecontext_contracts.common import LanguageCode
+from carecontext_contracts.common import LanguageCode, MetadataKey, MetadataValue, MimeType
 from carecontext_contracts.document_mcp import (
     CleanedDocumentText,
     DocumentToolMetadata,
@@ -77,7 +77,7 @@ def _quality_score(text: str, page_count: int | None = None) -> float:
 def extract_pdf_text(
     content_base64: str,
     filename: str,
-    content_type: str | None = "application/pdf",
+    content_type: str | None = MimeType.APPLICATION_PDF,
 ) -> ExtractedDocument:
     content = _decode_base64(content_base64)
     reader = PdfReader(BytesIO(content))
@@ -97,13 +97,13 @@ def extract_pdf_text(
     metadata = _extract_pdf_metadata(reader)
     metadata.update(
         {
-            "extractor": "pypdf",
-            "filename": filename,
-            "page_count": str(len(reader.pages)),
+            MetadataKey.EXTRACTOR: MetadataValue.PYPDF,
+            MetadataKey.FILENAME: filename,
+            MetadataKey.PAGE_COUNT: str(len(reader.pages)),
         }
     )
     if warnings:
-        metadata["warnings"] = "; ".join(warnings)
+        metadata[MetadataKey.WARNINGS] = "; ".join(warnings)
 
     return ExtractedDocument(
         text=extracted_text,
@@ -142,7 +142,7 @@ def infer_basic_document_metadata(
         section_titles=section_titles,
         quality_score=_quality_score(text),
         metadata={
-            "metadata_extractor": "document-mcp-server",
-            "filename": filename,
+            MetadataKey.METADATA_EXTRACTOR: MetadataValue.DOCUMENT_MCP_SERVER,
+            MetadataKey.FILENAME: filename,
         },
     )

@@ -1,3 +1,5 @@
+from carecontext_contracts.common import MetadataKey, MetadataValue
+
 from app.schemas.common import DocumentStatus, LanguageCode, SourceType
 from app.schemas.documents import DocumentChunk, DocumentSummary
 
@@ -23,7 +25,7 @@ MOCK_CHUNK = DocumentChunk(
     topic_tags=MOCK_DOCUMENT.topic_tags,
     language=MOCK_DOCUMENT.language,
     section="Sleep routines",
-    metadata={"mock": "true"},
+    metadata={MetadataKey.MOCK: MetadataValue.TRUE},
 )
 
 
@@ -35,5 +37,4 @@ def list_mock_chunks(doc_id: str) -> list[DocumentChunk]:
     if doc_id != MOCK_DOCUMENT.doc_id:
         return []
     return [MOCK_CHUNK]
-
 

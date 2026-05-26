@@ -5,8 +5,11 @@ services. Keep provider and MCP selection here instead of branching inside
 routes or use-case services.
 """
 
+import shlex
+
+from carecontext_contracts.common import McpTransport
 from app.adapters.mock.document_repository import MockDocumentRepository
-from app.adapters.mock.document_tools import MockDocumentTools
+from app.adapters.mcp.document_mcp_client import DocumentMcpClient
 from app.adapters.mock.retrieval_tools import MockRetrievalTools
 from app.core.config import Settings
 from app.ports.document_repository import DocumentRepositoryPort
@@ -41,8 +44,16 @@ class AppContainer:
 
 
 def build_document_tools(settings: Settings) -> DocumentToolsPort:
-    del settings
-    return MockDocumentTools()
+    if settings.document_mcp_transport != McpTransport.STDIO:
+        raise ValueError(
+            "Unsupported Document MCP transport "
+            f"'{settings.document_mcp_transport}'. Supported: {McpTransport.STDIO}"
+        )
+    return DocumentMcpClient(
+        command=settings.document_mcp_command,
+        args=shlex.split(settings.document_mcp_args) if settings.document_mcp_args else None,
+        cwd=settings.document_mcp_cwd,
+    )
 
 
 def build_retrieval_tools(settings: Settings) -> RetrievalToolsPort:

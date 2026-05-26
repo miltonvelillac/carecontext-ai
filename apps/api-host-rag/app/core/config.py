@@ -1,3 +1,4 @@
+from carecontext_contracts.common import McpTransport, ProviderName, RuntimeCommand
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,10 +12,10 @@ class Settings(BaseSettings):
     environment: str = "local"
     log_level: str = "INFO"
 
-    llm_provider: str = "openai"
-    embeddings_provider: str = "openai"
-    stt_provider: str = "openai"
-    tts_provider: str = "openai"
+    llm_provider: ProviderName = ProviderName.OPENAI
+    embeddings_provider: ProviderName = ProviderName.OPENAI
+    stt_provider: ProviderName = ProviderName.OPENAI
+    tts_provider: ProviderName = ProviderName.OPENAI
 
     openai_api_key: str | None = None
     openai_llm_model: str | None = None
@@ -26,5 +27,8 @@ class Settings(BaseSettings):
     chroma_host: str = "localhost"
     chroma_port: int = 8000
 
-    document_mcp_transport: str = "stdio"
-    retrieval_mcp_transport: str = "stdio"
+    document_mcp_transport: McpTransport = McpTransport.STDIO
+    retrieval_mcp_transport: McpTransport = McpTransport.STDIO
+    document_mcp_command: RuntimeCommand = RuntimeCommand.PYTHON
+    document_mcp_args: str | None = None
+    document_mcp_cwd: str | None = None

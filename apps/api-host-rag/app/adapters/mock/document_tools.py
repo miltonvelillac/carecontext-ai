@@ -1,3 +1,5 @@
+from carecontext_contracts.common import MetadataKey, MetadataValue, MimeType
+
 from app.ports.document_tools import CleanedDocumentText, DocumentToolMetadata, ExtractedDocument
 from app.schemas.common import LanguageCode
 
@@ -15,9 +17,9 @@ class MockDocumentTools:
                 "stimulation can support sleep quality."
             ),
             filename=filename,
-            content_type=content_type or "application/pdf",
+            content_type=content_type or MimeType.APPLICATION_PDF,
             page_count=1,
-            metadata={"mock": "true", "byte_count": str(len(content))},
+            metadata={MetadataKey.MOCK: MetadataValue.TRUE, MetadataKey.BYTE_COUNT: str(len(content))},
         )
 
     async def clean_extracted_text(self, text: str) -> CleanedDocumentText:
@@ -35,5 +37,5 @@ class MockDocumentTools:
             topic_tags=["sleep", "stress"],
             section_titles=["Sleep routines"],
             quality_score=0.8,
-            metadata={"mock": "true", "text_length": str(len(text))},
+            metadata={MetadataKey.MOCK: MetadataValue.TRUE, MetadataKey.TEXT_LENGTH: str(len(text))},
         )

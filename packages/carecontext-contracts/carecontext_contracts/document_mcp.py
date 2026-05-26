@@ -1,6 +1,22 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
 
 from carecontext_contracts.common import LanguageCode
+
+
+class DocumentMcpToolName(StrEnum):
+    EXTRACT_TEXT_FROM_PDF = "extract_text_from_pdf"
+    CLEAN_EXTRACTED_TEXT = "clean_extracted_text"
+    GET_DOCUMENT_METADATA = "get_document_metadata"
+
+
+class DocumentMcpArgumentName(StrEnum):
+    CONTENT_BASE64 = "content_base64"
+    CONTENT_TYPE = "content_type"
+    FILENAME = "filename"
+    TEXT = "text"
+    USER_TITLE = "user_title"
 
 
 class ExtractedDocument(BaseModel):
