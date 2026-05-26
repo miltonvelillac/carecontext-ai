@@ -2,7 +2,7 @@ from app.schemas.audio import TextToSpeechResult, TranscriptionResult
 from app.schemas.common import LanguageCode
 from app.schemas.query import AudioQueryRequest, RagAnswerResponse, TextQueryRequest
 from app.schemas.safety import SafetyAction, SafetyAssessment, SafetyRiskLevel
-from app.services.mock_corpus import mock_citation, mock_retrieved_context
+from app.adapters.mock.corpus import mock_citation, mock_retrieved_context
 
 
 def mock_safety() -> SafetyAssessment:
@@ -51,4 +51,3 @@ async def answer_audio_query(filename: str | None, request: AudioQueryRequest) -
         else None,
         trace_id="mock-trace-audio",
     )
-

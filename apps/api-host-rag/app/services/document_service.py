@@ -1,5 +1,5 @@
 from app.schemas.documents import DocumentDetail, DocumentListResponse
-from app.services.mock_corpus import list_mock_chunks, list_mock_documents
+from app.adapters.mock.corpus import list_mock_chunks, list_mock_documents
 
 
 class DocumentNotFoundError(Exception):
@@ -21,4 +21,3 @@ async def get_document(doc_id: str) -> DocumentDetail:
                 metadata={"mock": "true"},
             )
     raise DocumentNotFoundError(doc_id)
-
