@@ -1,0 +1,12 @@
+[project]
+name = "carecontext-contracts"
+version = "0.1.0"
+description = "Shared API and MCP payload contracts for CareContext AI."
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.8.0"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

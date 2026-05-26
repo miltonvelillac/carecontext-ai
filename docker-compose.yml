@@ -1,7 +1,8 @@
 services:
   api-host-rag:
     build:
-      context: ./apps/api-host-rag
+      context: .
+      dockerfile: apps/api-host-rag/Dockerfile
     env_file:
       - .env
     ports:
@@ -30,4 +31,3 @@ services:
 
 volumes:
   chroma-data:
-
