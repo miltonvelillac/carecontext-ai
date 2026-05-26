@@ -4,6 +4,7 @@ from app.ports.document_tools import (
     DocumentToolsPort,
     ExtractedDocument,
 )
+from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.embeddings import EmbeddingsProvider
 from app.ports.llm import LlmProvider, LlmRequest, LlmResponse
 from app.ports.retrieval_tools import (
@@ -24,6 +25,7 @@ __all__ = [
     "AudioResult",
     "CleanedDocumentText",
     "DocumentToolMetadata",
+    "DocumentRepositoryPort",
     "DocumentToolsPort",
     "EmbeddingsProvider",
     "ExtractedDocument",

@@ -1,5 +1,8 @@
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 
+from app.api.dependencies import get_document_tools, get_retrieval_tools
+from app.ports.document_tools import DocumentToolsPort
+from app.ports.retrieval_tools import RetrievalToolsPort
 from app.schemas.common import LanguageCode
 from app.schemas.ingestion import CuratedSyncResponse, IngestionJobResponse
 from app.services.ingestion_service import sync_curated_corpus, upload_document
@@ -13,12 +16,19 @@ async def upload_document_endpoint(
     title: str | None = Form(default=None),
     topic_tags: str | None = Form(default=None),
     language: LanguageCode = Form(default=LanguageCode.AUTO),
+    document_tools: DocumentToolsPort = Depends(get_document_tools),
+    retrieval_tools: RetrievalToolsPort = Depends(get_retrieval_tools),
 ) -> IngestionJobResponse:
+    content = await file.read()
     return await upload_document(
+        content=content,
         filename=file.filename,
+        content_type=file.content_type,
         title=title,
         topic_tags=topic_tags,
         language=language,
+        document_tools=document_tools,
+        retrieval_tools=retrieval_tools,
     )
 
 

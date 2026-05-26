@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.routes import documents, health, ingestion, query
+from app.composition.container import AppContainer
 from app.core.config import Settings
 
 
@@ -8,6 +9,7 @@ def create_app() -> FastAPI:
     settings = Settings()
     app = FastAPI(title=settings.api_title, version=settings.api_version)
     app.state.settings = settings
+    app.state.container = AppContainer(settings)
 
     app.include_router(health.router)
     app.include_router(ingestion.router)

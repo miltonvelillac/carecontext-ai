@@ -1,5 +1,5 @@
+from app.ports.document_repository import DocumentRepositoryPort
 from app.schemas.documents import DocumentDetail, DocumentListResponse
-from app.adapters.mock.corpus import list_mock_chunks, list_mock_documents
 
 
 class DocumentNotFoundError(Exception):
@@ -8,16 +8,12 @@ class DocumentNotFoundError(Exception):
         self.doc_id = doc_id
 
 
-async def list_documents() -> DocumentListResponse:
-    return DocumentListResponse(documents=list_mock_documents())
+async def list_documents(repository: DocumentRepositoryPort) -> DocumentListResponse:
+    return DocumentListResponse(documents=await repository.list_documents())
 
 
-async def get_document(doc_id: str) -> DocumentDetail:
-    for document in list_mock_documents():
-        if document.doc_id == doc_id:
-            return DocumentDetail(
-                **document.model_dump(),
-                chunks=list_mock_chunks(doc_id),
-                metadata={"mock": "true"},
-            )
+async def get_document(doc_id: str, repository: DocumentRepositoryPort) -> DocumentDetail:
+    document = await repository.get_document(doc_id)
+    if document is not None:
+        return document
     raise DocumentNotFoundError(doc_id)
