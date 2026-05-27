@@ -4,7 +4,7 @@ import os
 from typing import Any
 
 import chromadb
-from carecontext_contracts.common import LanguageCode
+from carecontext_contracts.common import ChromaHnswSpace, LanguageCode
 from carecontext_contracts.retrieval_mcp import (
     ChunkDocumentRequest,
     ChunkDocumentResult,
@@ -20,6 +20,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from embeddings import build_embeddings_provider, tokenize_text
 
 COLLECTION_NAME = os.getenv("CARECONTEXT_CHROMA_COLLECTION", "carecontext_chunks")
+DEFAULT_CHROMA_HNSW_SPACE = ChromaHnswSpace.COSINE
 
 
 def chunk_retrieval_document(request: ChunkDocumentRequest) -> ChunkDocumentResult:
@@ -172,7 +173,7 @@ def _collection() -> Any:
     client = _chroma_client()
     return client.get_or_create_collection(
         name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
+        metadata={"hnsw:space": _chroma_hnsw_space().value},
         embedding_function=None,
     )
 
@@ -185,6 +186,12 @@ def _chroma_client() -> Any:
 
     path = os.getenv("CARECONTEXT_CHROMA_PATH", "./data/chroma")
     return chromadb.PersistentClient(path=path)
+
+
+def _chroma_hnsw_space() -> ChromaHnswSpace:
+    return ChromaHnswSpace(
+        os.getenv("CARECONTEXT_CHROMA_HNSW_SPACE", DEFAULT_CHROMA_HNSW_SPACE.value)
+    )
 
 
 def _embeddings_provider() -> Any:

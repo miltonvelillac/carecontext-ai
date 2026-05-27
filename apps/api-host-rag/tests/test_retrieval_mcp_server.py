@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from carecontext_contracts.common import LanguageCode, SourceType
+from carecontext_contracts.common import ChromaHnswSpace, LanguageCode, SourceType
 from carecontext_contracts.retrieval_mcp import ChunkDocumentRequest, RetrievalFilter
 
 
@@ -95,3 +95,25 @@ def test_search_retrieval_chunks_applies_min_score_threshold(
     )
 
     assert [chunk.chunk_id for chunk in result.results] == ["good-chunk"]
+
+
+def test_collection_uses_configured_chroma_hnsw_space(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    processing = _load_retrieval_processing_module()
+    captured: dict[str, object] = {}
+
+    class FakeClient:
+        def get_or_create_collection(self, **kwargs):
+            captured.update(kwargs)
+            return object()
+
+    monkeypatch.setenv(
+        "CARECONTEXT_CHROMA_HNSW_SPACE",
+        ChromaHnswSpace.INNER_PRODUCT.value,
+    )
+    monkeypatch.setattr(processing, "_chroma_client", lambda: FakeClient())
+
+    processing._collection()
+
+    assert captured["metadata"] == {"hnsw:space": ChromaHnswSpace.INNER_PRODUCT.value}

@@ -1,4 +1,5 @@
 from carecontext_contracts.common import (
+    ChromaHnswSpace,
     LanguageCode,
     MetadataKey,
     MetadataValue,
@@ -33,6 +34,7 @@ from carecontext_contracts.retrieval_mcp import (
 
 __all__ = [
     "CleanedDocumentText",
+    "ChromaHnswSpace",
     "ChunkDocumentRequest",
     "ChunkDocumentResult",
     "DocumentMcpArgumentName",

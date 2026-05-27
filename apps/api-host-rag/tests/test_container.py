@@ -14,7 +14,7 @@ from app.composition.container import (
     build_safety_classifier,
 )
 from app.core.config import Settings
-from carecontext_contracts.common import ProviderName
+from carecontext_contracts.common import ChromaHnswSpace, ProviderName
 from carecontext_contracts.retrieval_mcp import RetrievalEmbeddingsProvider
 
 
@@ -64,6 +64,7 @@ def test_build_retrieval_tools_uses_retrieval_mcp_client_with_local_chroma_path(
     assert isinstance(retrieval_tools, RetrievalMcpClient)
     assert retrieval_tools.env is not None
     assert retrieval_tools.env["CARECONTEXT_CHROMA_PATH"] == str(tmp_path / "chroma")
+    assert retrieval_tools.env["CARECONTEXT_CHROMA_HNSW_SPACE"] == ChromaHnswSpace.COSINE.value
     assert (
         retrieval_tools.env["CARECONTEXT_EMBEDDINGS_PROVIDER"]
         == RetrievalEmbeddingsProvider.DETERMINISTIC.value
@@ -81,6 +82,16 @@ def test_build_retrieval_tools_uses_configured_chroma_http() -> None:
     assert retrieval_tools.env["CARECONTEXT_CHROMA_HOST"] == "chroma"
     assert retrieval_tools.env["CARECONTEXT_CHROMA_PORT"] == "8000"
     assert "CARECONTEXT_CHROMA_PATH" not in retrieval_tools.env
+
+
+def test_build_retrieval_tools_passes_configured_chroma_hnsw_space() -> None:
+    retrieval_tools = build_retrieval_tools(
+        Settings(chroma_hnsw_space=ChromaHnswSpace.INNER_PRODUCT)
+    )
+
+    assert isinstance(retrieval_tools, RetrievalMcpClient)
+    assert retrieval_tools.env is not None
+    assert retrieval_tools.env["CARECONTEXT_CHROMA_HNSW_SPACE"] == ChromaHnswSpace.INNER_PRODUCT.value
 
 
 def test_build_retrieval_tools_passes_configured_min_score() -> None:

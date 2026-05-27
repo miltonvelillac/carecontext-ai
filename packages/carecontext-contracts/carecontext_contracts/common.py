@@ -16,6 +16,12 @@ class McpTransport(StrEnum):
     STDIO = "stdio"
 
 
+class ChromaHnswSpace(StrEnum):
+    COSINE = "cosine"
+    L2 = "l2"
+    INNER_PRODUCT = "ip"
+
+
 class RuntimeCommand(StrEnum):
     PYTHON = "python"
 

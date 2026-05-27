@@ -158,6 +158,7 @@ def build_document_repository(settings: Settings) -> DocumentRepositoryPort:
 def _build_retrieval_mcp_env(settings: Settings) -> dict[str, str]:
     env = os.environ.copy()
     env["CARECONTEXT_EMBEDDINGS_PROVIDER"] = _retrieval_embeddings_provider(settings)
+    env["CARECONTEXT_CHROMA_HNSW_SPACE"] = settings.chroma_hnsw_space.value
     if settings.openai_embedding_model:
         env["OPENAI_EMBEDDING_MODEL"] = settings.openai_embedding_model
     if settings.openai_api_key:

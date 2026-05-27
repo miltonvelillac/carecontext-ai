@@ -1,4 +1,4 @@
-from carecontext_contracts.common import McpTransport, ProviderName, RuntimeCommand
+from carecontext_contracts.common import ChromaHnswSpace, McpTransport, ProviderName, RuntimeCommand
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     data_dir: str = "./data"
     chroma_host: str | None = None
     chroma_port: int = 8000
+    chroma_hnsw_space: ChromaHnswSpace = ChromaHnswSpace.COSINE
     retrieval_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
 
     document_mcp_transport: McpTransport = McpTransport.STDIO
