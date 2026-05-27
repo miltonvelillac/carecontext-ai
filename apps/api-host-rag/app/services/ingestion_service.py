@@ -7,7 +7,7 @@ coordinates ports such as document processing and retrieval indexing.
 from app.ports.document_tools import DocumentToolsPort
 from app.ports.retrieval_tools import RetrievalToolsPort
 from app.schemas.common import DocumentStatus, LanguageCode, SourceType
-from app.schemas.documents import DocumentChunk, DocumentMetadata
+from app.schemas.documents import DocumentMetadata
 from app.schemas.ingestion import CuratedSyncResponse, IngestionJobResponse
 
 
@@ -47,9 +47,8 @@ async def upload_document(
         status=DocumentStatus.UPLOADED,
         quality_score=tool_metadata.quality_score,
     )
-    chunk = DocumentChunk(
+    chunks = await retrieval_tools.chunk_document(
         doc_id=doc_id,
-        chunk_id=f"{doc_id}-chunk-001",
         title=resolved_title,
         text=cleaned.text,
         source_type=SourceType.UPLOADED,
@@ -59,7 +58,7 @@ async def upload_document(
         quality_score=tool_metadata.quality_score,
         metadata={**extracted.metadata, **tool_metadata.metadata},
     )
-    upsert_result = await retrieval_tools.upsert_chunks([chunk])
+    upsert_result = await retrieval_tools.upsert_chunks(chunks)
     return IngestionJobResponse(
         doc_id=doc_id,
         status=DocumentStatus.UPLOADED,

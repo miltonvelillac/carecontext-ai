@@ -42,6 +42,21 @@ class RetrievalToolsPort(Protocol):
     contract while the concrete retrieval strategy can change underneath.
     """
 
+    async def chunk_document(
+        self,
+        *,
+        doc_id: str,
+        title: str,
+        text: str,
+        source_type: SourceType,
+        topic_tags: list[str],
+        language: LanguageCode,
+        section: str | None = None,
+        quality_score: float | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> list[DocumentChunk]:
+        ...
+
     async def upsert_chunks(self, chunks: list[DocumentChunk]) -> UpsertChunksResult:
         ...
 

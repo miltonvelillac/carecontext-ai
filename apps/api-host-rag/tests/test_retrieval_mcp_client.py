@@ -48,6 +48,23 @@ class CapturingRetrievalMcpClient(RetrievalMcpClient):
 
     async def _call_tool(self, name: Any, arguments: dict[str, Any]) -> dict[str, Any]:
         self.calls.append((name, arguments))
+        if str(name) == "chunk_document":
+            request = arguments["request"]
+            return {
+                "chunks": [
+                    {
+                        "doc_id": request["doc_id"],
+                        "chunk_id": f"{request['doc_id']}-chunk-001",
+                        "title": request["title"],
+                        "text": request["text"],
+                        "source_type": request["source_type"],
+                        "topic_tags": request["topic_tags"],
+                        "language": request["language"],
+                        "section": request["section"],
+                        "metadata": {"chunker": "test"},
+                    }
+                ]
+            }
         if str(name) == "upsert_chunks":
             return {
                 "inserted_count": 1,
@@ -80,6 +97,28 @@ class CapturingRetrievalMcpClient(RetrievalMcpClient):
                 ]
             }
         raise AssertionError(f"Unexpected tool: {name}")
+
+
+@pytest.mark.asyncio
+async def test_chunk_document_sends_json_compatible_request() -> None:
+    client = CapturingRetrievalMcpClient()
+
+    chunks = await client.chunk_document(
+        doc_id="doc-1",
+        title="Sleep Basics",
+        text="Consistent sleep routines can support sleep quality.",
+        source_type=SourceType.CURATED,
+        topic_tags=["sleep"],
+        language=LanguageCode.EN,
+        section="Sleep routines",
+        metadata={"test": "true"},
+    )
+
+    assert chunks[0].chunk_id == "doc-1-chunk-001"
+    _, arguments = client.calls[0]
+    assert arguments["request"]["source_type"] == "curated"
+    assert arguments["request"]["language"] == "en"
+    assert arguments["request"]["topic_tags"] == ["sleep"]
 
 
 @pytest.mark.asyncio

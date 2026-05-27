@@ -5,10 +5,39 @@ from app.ports.retrieval_tools import (
     RetrievedChunk,
     UpsertChunksResult,
 )
+from app.schemas.common import LanguageCode, SourceType
 from app.schemas.documents import DocumentChunk
 
 
 class MockRetrievalTools:
+    async def chunk_document(
+        self,
+        *,
+        doc_id: str,
+        title: str,
+        text: str,
+        source_type: SourceType,
+        topic_tags: list[str],
+        language: LanguageCode,
+        section: str | None = None,
+        quality_score: float | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> list[DocumentChunk]:
+        return [
+            DocumentChunk(
+                doc_id=doc_id,
+                chunk_id=f"{doc_id}-chunk-001",
+                title=title,
+                text=text,
+                source_type=source_type,
+                topic_tags=topic_tags,
+                language=language,
+                section=section,
+                quality_score=quality_score,
+                metadata=metadata or {},
+            )
+        ]
+
     async def upsert_chunks(self, chunks: list[DocumentChunk]) -> UpsertChunksResult:
         return UpsertChunksResult(
             inserted_count=len(chunks),

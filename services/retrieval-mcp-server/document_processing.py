@@ -9,6 +9,8 @@ from typing import Any
 import chromadb
 from carecontext_contracts.common import LanguageCode
 from carecontext_contracts.retrieval_mcp import (
+    ChunkDocumentRequest,
+    ChunkDocumentResult,
     HybridSearchResult,
     RerankResultsResult,
     RerankedChunk,
@@ -17,10 +19,47 @@ from carecontext_contracts.retrieval_mcp import (
     RetrievedChunk,
     UpsertChunksResult,
 )
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 COLLECTION_NAME = os.getenv("CARECONTEXT_CHROMA_COLLECTION", "carecontext_chunks")
 EMBEDDING_DIMENSIONS = int(os.getenv("CARECONTEXT_EMBEDDING_DIMENSIONS", "384"))
 TOKEN_PATTERN = re.compile(r"[a-zA-Z\u00c0-\u00ff0-9]+")
+
+
+def chunk_retrieval_document(request: ChunkDocumentRequest) -> ChunkDocumentResult:
+    text = request.text.strip()
+    if not text:
+        return ChunkDocumentResult()
+
+    chunk_overlap = min(request.chunk_overlap, max(request.chunk_size - 1, 0))
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=request.chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", ". ", " ", ""],
+    )
+    split_texts = splitter.split_text(text)
+    chunk_count = len(split_texts)
+    chunks = [
+        RetrievalDocumentChunk(
+            doc_id=request.doc_id,
+            chunk_id=f"{request.doc_id}-chunk-{index:03d}",
+            title=request.title,
+            text=chunk_text,
+            source_type=request.source_type,
+            topic_tags=request.topic_tags,
+            language=request.language,
+            section=request.section,
+            quality_score=request.quality_score,
+            metadata={
+                **request.metadata,
+                "chunk_index": str(index),
+                "chunk_count": str(chunk_count),
+                "chunker": "recursive_character_text_splitter",
+            },
+        )
+        for index, chunk_text in enumerate(split_texts, start=1)
+    ]
+    return ChunkDocumentResult(chunks=chunks)
 
 
 def upsert_retrieval_chunks(chunks: list[RetrievalDocumentChunk]) -> UpsertChunksResult:

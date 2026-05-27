@@ -1,5 +1,7 @@
 from carecontext_contracts.common import McpTransport
 from carecontext_contracts.retrieval_mcp import (
+    ChunkDocumentRequest,
+    ChunkDocumentResult,
     HybridSearchResult,
     RerankResultsResult,
     RetrievalDocumentChunk,
@@ -8,6 +10,7 @@ from carecontext_contracts.retrieval_mcp import (
     UpsertChunksResult,
 )
 from document_processing import (
+    chunk_retrieval_document,
     rerank_retrieval_results,
     search_retrieval_chunks,
     upsert_retrieval_chunks,
@@ -15,6 +18,12 @@ from document_processing import (
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("carecontext-retrieval-tools")
+
+
+@mcp.tool()
+def chunk_document(request: ChunkDocumentRequest) -> ChunkDocumentResult:
+    """Split document text into retrieval-ready chunks."""
+    return chunk_retrieval_document(request)
 
 
 @mcp.tool()

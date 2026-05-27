@@ -17,6 +17,8 @@ from carecontext_contracts.document_mcp import (
     ExtractedDocument,
 )
 from carecontext_contracts.retrieval_mcp import (
+    ChunkDocumentRequest,
+    ChunkDocumentResult,
     HybridSearchResult,
     RerankResultsResult,
     RerankedChunk,
@@ -30,6 +32,8 @@ from carecontext_contracts.retrieval_mcp import (
 
 __all__ = [
     "CleanedDocumentText",
+    "ChunkDocumentRequest",
+    "ChunkDocumentResult",
     "DocumentMcpArgumentName",
     "DocumentMcpToolName",
     "DocumentToolMetadata",

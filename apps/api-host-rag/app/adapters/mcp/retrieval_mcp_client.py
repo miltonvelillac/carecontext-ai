@@ -6,6 +6,8 @@ from typing import Any
 
 from carecontext_contracts.common import RuntimeCommand
 from carecontext_contracts.retrieval_mcp import (
+    ChunkDocumentRequest,
+    ChunkDocumentResult,
     HybridSearchResult,
     RerankResultsResult,
     RetrievalDocumentChunk,
@@ -23,6 +25,7 @@ from app.ports.retrieval_tools import (
     RetrievedChunk,
     UpsertChunksResult,
 )
+from app.schemas.common import LanguageCode, SourceType
 from app.schemas.documents import DocumentChunk
 
 
@@ -45,6 +48,40 @@ class RetrievalMcpClient:
         self.args = args or [str(_default_retrieval_server_path())]
         self.cwd = Path(cwd).resolve() if cwd is not None else None
         self.env = env
+
+    async def chunk_document(
+        self,
+        *,
+        doc_id: str,
+        title: str,
+        text: str,
+        source_type: SourceType,
+        topic_tags: list[str],
+        language: LanguageCode,
+        section: str | None = None,
+        quality_score: float | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> list[DocumentChunk]:
+        request = ChunkDocumentRequest(
+            doc_id=doc_id,
+            title=title,
+            text=text,
+            source_type=source_type,
+            topic_tags=topic_tags,
+            language=language,
+            section=section,
+            quality_score=quality_score,
+            metadata=metadata or {},
+        )
+        payload = await self._call_tool(
+            RetrievalMcpToolName.CHUNK_DOCUMENT,
+            {RetrievalMcpArgumentName.REQUEST: request.model_dump(mode="json")},
+        )
+        result = ChunkDocumentResult.model_validate(payload)
+        return [
+            DocumentChunk.model_validate(chunk.model_dump(mode="json"))
+            for chunk in result.chunks
+        ]
 
     async def upsert_chunks(self, chunks: list[DocumentChunk]) -> UpsertChunksResult:
         contract_chunks = [
