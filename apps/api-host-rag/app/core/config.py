@@ -1,4 +1,5 @@
 from carecontext_contracts.common import McpTransport, ProviderName, RuntimeCommand
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,7 +14,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     llm_provider: ProviderName = ProviderName.MOCK
-    embeddings_provider: ProviderName = ProviderName.OPENAI
+    embeddings_provider: ProviderName = ProviderName.MOCK
     stt_provider: ProviderName = ProviderName.OPENAI
     tts_provider: ProviderName = ProviderName.OPENAI
 
@@ -26,6 +27,7 @@ class Settings(BaseSettings):
     data_dir: str = "./data"
     chroma_host: str | None = None
     chroma_port: int = 8000
+    retrieval_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
 
     document_mcp_transport: McpTransport = McpTransport.STDIO
     retrieval_mcp_transport: McpTransport = McpTransport.STDIO

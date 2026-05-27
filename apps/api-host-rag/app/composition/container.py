@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 from carecontext_contracts.common import McpTransport, ProviderName
+from carecontext_contracts.retrieval_mcp import RetrievalEmbeddingsProvider
 from app.chains.langchain_answer_synthesizer import LangChainAnswerSynthesizer
 from app.chains.langchain_safety_classifier import LangChainSafetyClassifier
 from app.adapters.mock.document_repository import MockDocumentRepository
@@ -143,6 +144,7 @@ def build_retrieval_tools(settings: Settings) -> RetrievalToolsPort:
         args=shlex.split(settings.retrieval_mcp_args) if settings.retrieval_mcp_args else None,
         cwd=settings.retrieval_mcp_cwd,
         env=_build_retrieval_mcp_env(settings),
+        min_score=settings.retrieval_min_score,
     )
 
 
@@ -155,6 +157,12 @@ def build_document_repository(settings: Settings) -> DocumentRepositoryPort:
 
 def _build_retrieval_mcp_env(settings: Settings) -> dict[str, str]:
     env = os.environ.copy()
+    env["CARECONTEXT_EMBEDDINGS_PROVIDER"] = _retrieval_embeddings_provider(settings)
+    if settings.openai_embedding_model:
+        env["OPENAI_EMBEDDING_MODEL"] = settings.openai_embedding_model
+    if settings.openai_api_key:
+        env["OPENAI_API_KEY"] = settings.openai_api_key
+
     if settings.chroma_host:
         env["CARECONTEXT_CHROMA_HOST"] = settings.chroma_host
         env["CARECONTEXT_CHROMA_PORT"] = str(settings.chroma_port)
@@ -164,3 +172,15 @@ def _build_retrieval_mcp_env(settings: Settings) -> dict[str, str]:
         env.pop("CARECONTEXT_CHROMA_HOST", None)
         env.pop("CARECONTEXT_CHROMA_PORT", None)
     return env
+
+
+def _retrieval_embeddings_provider(settings: Settings) -> str:
+    if settings.embeddings_provider == ProviderName.MOCK:
+        return RetrievalEmbeddingsProvider.DETERMINISTIC.value
+    if settings.embeddings_provider == ProviderName.OPENAI:
+        if not settings.openai_api_key:
+            raise ValueError(
+                f"OPENAI_API_KEY is required when EMBEDDINGS_PROVIDER={ProviderName.OPENAI.value}."
+            )
+        return RetrievalEmbeddingsProvider.OPENAI.value
+    raise ValueError(f"Unsupported embeddings provider '{settings.embeddings_provider}'.")

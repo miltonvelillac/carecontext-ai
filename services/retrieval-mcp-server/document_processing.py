@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import hashlib
-import math
 import os
-import re
 from typing import Any
 
 import chromadb
@@ -20,10 +17,9 @@ from carecontext_contracts.retrieval_mcp import (
     UpsertChunksResult,
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from embeddings import build_embeddings_provider, tokenize_text
 
 COLLECTION_NAME = os.getenv("CARECONTEXT_CHROMA_COLLECTION", "carecontext_chunks")
-EMBEDDING_DIMENSIONS = int(os.getenv("CARECONTEXT_EMBEDDING_DIMENSIONS", "384"))
-TOKEN_PATTERN = re.compile(r"[a-zA-Z\u00c0-\u00ff0-9]+")
 
 
 def chunk_retrieval_document(request: ChunkDocumentRequest) -> ChunkDocumentResult:
@@ -87,7 +83,7 @@ def upsert_retrieval_chunks(chunks: list[RetrievalDocumentChunk]) -> UpsertChunk
 
     collection.upsert(
         ids=ids,
-        embeddings=[_embed_text(chunk.text) for chunk in chunks_to_write],
+        embeddings=[_embeddings_provider().embed_text(chunk.text) for chunk in chunks_to_write],
         documents=[chunk.text for chunk in chunks_to_write],
         metadatas=[_chunk_metadata(chunk) for chunk in chunks_to_write],
     )
@@ -118,7 +114,7 @@ def search_retrieval_chunks(
     retrieval_filter = _normalize_filter(filters)
     n_results = min(collection_size, max(top_k * 5, top_k))
     raw_results = collection.query(
-        query_embeddings=[_embed_text(query)],
+        query_embeddings=[_embeddings_provider().embed_text(query)],
         n_results=n_results,
         include=["documents", "metadatas", "distances"],
     )
@@ -134,6 +130,14 @@ def search_retrieval_chunks(
         key=lambda chunk: chunk.score,
         reverse=True,
     )
+    if retrieval_filter and retrieval_filter.min_score is not None:
+        # Optional similarity threshold: return fewer than top_k rather than
+        # padding the context with weakly related chunks.
+        ranked = [
+            chunk
+            for chunk in ranked
+            if chunk.score >= retrieval_filter.min_score
+        ]
     return HybridSearchResult(results=ranked[:top_k])
 
 
@@ -181,6 +185,10 @@ def _chroma_client() -> Any:
 
     path = os.getenv("CARECONTEXT_CHROMA_PATH", "./data/chroma")
     return chromadb.PersistentClient(path=path)
+
+
+def _embeddings_provider() -> Any:
+    return build_embeddings_provider()
 
 
 def _normalize_chunks(
@@ -297,10 +305,10 @@ def _hybrid_score(text: str, query: str, vector_score: float) -> float:
 
 
 def _keyword_overlap(text: str, query: str) -> float:
-    query_terms = set(_tokens(query))
+    query_terms = set(tokenize_text(query))
     if not query_terms:
         return 0.0
-    text_terms = set(_tokens(text))
+    text_terms = set(tokenize_text(text))
     return len(query_terms & text_terms) / len(query_terms)
 
 
@@ -309,21 +317,3 @@ def _snippet(text: str, max_length: int = 500) -> str:
     if len(compact) <= max_length:
         return compact
     return compact[: max_length - 3].rstrip() + "..."
-
-
-def _embed_text(text: str) -> list[float]:
-    vector = [0.0] * EMBEDDING_DIMENSIONS
-    for token in _tokens(text):
-        digest = hashlib.sha256(token.encode("utf-8")).digest()
-        index = int.from_bytes(digest[:4], "big") % EMBEDDING_DIMENSIONS
-        sign = 1.0 if digest[4] % 2 == 0 else -1.0
-        vector[index] += sign
-
-    norm = math.sqrt(sum(value * value for value in vector))
-    if norm == 0:
-        return vector
-    return [value / norm for value in vector]
-
-
-def _tokens(text: str) -> list[str]:
-    return [match.group(0).lower() for match in TOKEN_PATTERN.finditer(text)]

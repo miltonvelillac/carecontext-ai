@@ -20,6 +20,7 @@ class RetrievalFilter(BaseModel):
     source_types: list[SourceType] = Field(default_factory=list)
     topic_tags: list[str] = Field(default_factory=list)
     language: LanguageCode = LanguageCode.AUTO
+    min_score: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class UpsertChunksResult(BaseModel):

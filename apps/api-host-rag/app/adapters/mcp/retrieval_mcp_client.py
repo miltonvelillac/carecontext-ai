@@ -43,11 +43,13 @@ class RetrievalMcpClient:
         args: list[str] | None = None,
         cwd: str | Path | None = None,
         env: dict[str, str] | None = None,
+        min_score: float | None = None,
     ) -> None:
         self.command = command
         self.args = args or [str(_default_retrieval_server_path())]
         self.cwd = Path(cwd).resolve() if cwd is not None else None
         self.env = env
+        self.min_score = min_score
 
     async def chunk_document(
         self,
@@ -112,9 +114,16 @@ class RetrievalMcpClient:
             contract_filters = ContractRetrievalFilter.model_validate(
                 filters.model_dump(mode="json")
             )
+            if contract_filters.min_score is None:
+                contract_filters.min_score = self.min_score
             arguments[RetrievalMcpArgumentName.FILTERS] = contract_filters.model_dump(
-                mode="json"
+                mode="json",
+                exclude_none=True,
             )
+        elif self.min_score is not None:
+            arguments[RetrievalMcpArgumentName.FILTERS] = ContractRetrievalFilter(
+                min_score=self.min_score
+            ).model_dump(mode="json", exclude_none=True)
 
         payload = await self._call_tool(RetrievalMcpToolName.HYBRID_SEARCH, arguments)
         search_result = HybridSearchResult.model_validate(payload)

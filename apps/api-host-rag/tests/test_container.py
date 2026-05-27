@@ -15,6 +15,7 @@ from app.composition.container import (
 )
 from app.core.config import Settings
 from carecontext_contracts.common import ProviderName
+from carecontext_contracts.retrieval_mcp import RetrievalEmbeddingsProvider
 
 
 def test_build_llm_provider_uses_mock_provider_by_default() -> None:
@@ -63,6 +64,10 @@ def test_build_retrieval_tools_uses_retrieval_mcp_client_with_local_chroma_path(
     assert isinstance(retrieval_tools, RetrievalMcpClient)
     assert retrieval_tools.env is not None
     assert retrieval_tools.env["CARECONTEXT_CHROMA_PATH"] == str(tmp_path / "chroma")
+    assert (
+        retrieval_tools.env["CARECONTEXT_EMBEDDINGS_PROVIDER"]
+        == RetrievalEmbeddingsProvider.DETERMINISTIC.value
+    )
     assert "CARECONTEXT_CHROMA_HOST" not in retrieval_tools.env
 
 
@@ -76,3 +81,36 @@ def test_build_retrieval_tools_uses_configured_chroma_http() -> None:
     assert retrieval_tools.env["CARECONTEXT_CHROMA_HOST"] == "chroma"
     assert retrieval_tools.env["CARECONTEXT_CHROMA_PORT"] == "8000"
     assert "CARECONTEXT_CHROMA_PATH" not in retrieval_tools.env
+
+
+def test_build_retrieval_tools_passes_configured_min_score() -> None:
+    retrieval_tools = build_retrieval_tools(Settings(retrieval_min_score=0.6))
+
+    assert isinstance(retrieval_tools, RetrievalMcpClient)
+    assert retrieval_tools.min_score == 0.6
+
+
+def test_build_retrieval_tools_passes_openai_embeddings_settings() -> None:
+    retrieval_tools = build_retrieval_tools(
+        Settings(
+            embeddings_provider=ProviderName.OPENAI,
+            openai_api_key="test-key",
+            openai_embedding_model="text-embedding-test",
+        )
+    )
+
+    assert isinstance(retrieval_tools, RetrievalMcpClient)
+    assert retrieval_tools.env is not None
+    assert (
+        retrieval_tools.env["CARECONTEXT_EMBEDDINGS_PROVIDER"]
+        == RetrievalEmbeddingsProvider.OPENAI.value
+    )
+    assert retrieval_tools.env["OPENAI_API_KEY"] == "test-key"
+    assert retrieval_tools.env["OPENAI_EMBEDDING_MODEL"] == "text-embedding-test"
+
+
+def test_build_retrieval_tools_requires_openai_api_key_for_openai_embeddings() -> None:
+    with pytest.raises(ValueError, match="OPENAI_API_KEY is required"):
+        build_retrieval_tools(
+            Settings(embeddings_provider=ProviderName.OPENAI, openai_api_key=None)
+        )

@@ -155,6 +155,37 @@ async def test_retrieve_chunks_sends_json_compatible_filters() -> None:
 
 
 @pytest.mark.asyncio
+async def test_retrieve_chunks_adds_configured_min_score_to_filters() -> None:
+    client = CapturingRetrievalMcpClient()
+    client.min_score = 0.7
+
+    await client.retrieve_chunks(
+        "sleep routines",
+        3,
+        RetrievalFilter(source_types=[SourceType.CURATED]),
+    )
+
+    _, arguments = client.calls[0]
+    assert arguments["filters"]["min_score"] == 0.7
+
+
+@pytest.mark.asyncio
+async def test_retrieve_chunks_sends_min_score_without_other_filters() -> None:
+    client = CapturingRetrievalMcpClient()
+    client.min_score = 0.7
+
+    await client.retrieve_chunks("sleep routines", 3)
+
+    _, arguments = client.calls[0]
+    assert arguments["filters"] == {
+        "source_types": [],
+        "topic_tags": [],
+        "language": "auto",
+        "min_score": 0.7,
+    }
+
+
+@pytest.mark.asyncio
 async def test_rerank_results_sends_json_compatible_results() -> None:
     client = CapturingRetrievalMcpClient()
     result = RetrievedChunk(
