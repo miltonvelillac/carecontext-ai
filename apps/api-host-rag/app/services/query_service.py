@@ -57,6 +57,21 @@ def _to_retrieved_context(chunk: RetrievedChunk) -> RetrievedContextChunk:
     )
 
 
+def _compose_grounded_answer(query: str, results: list[RetrievedChunk]) -> str:
+    if not results:
+        return (
+            "I could not find relevant context in the indexed documents for this question. "
+            "This assistant is educational and not a substitute for professional care."
+        )
+
+    top_result = results[0]
+    return (
+        "Based on the retrieved educational source, the most relevant context says: "
+        f"{top_result.snippet} "
+        "This response is educational and should not be treated as medical advice."
+    )
+
+
 async def answer_text_query(
     request: TextQueryRequest,
     retrieval_tools: RetrievalToolsPort,
@@ -67,11 +82,7 @@ async def answer_text_query(
         filters=_to_port_filters(request),
     )
     return RagAnswerResponse(
-        answer=(
-            "Mock answer: consistent sleep routines can support sleep quality and may "
-            "help with stress management. This response is educational and uses a "
-            "placeholder citation until retrieval and synthesis are implemented."
-        ),
+        answer=_compose_grounded_answer(request.query, results),
         citations=[_to_citation(result) for result in results],
         safety=_mock_safety(),
         retrieved_context=[_to_retrieved_context(result) for result in results],
