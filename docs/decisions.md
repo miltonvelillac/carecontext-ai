@@ -29,6 +29,34 @@
 - **Deploy:** local Docker first.
 - **Evaluation:** lightweight evals initially.
 
+### API Host Layering
+
+The API Host keeps business orchestration separate from framework and provider
+details:
+
+```txt
+api/routes/
+  -> HTTP request/response boundary
+services/
+  -> business flow orchestration
+ports/
+  -> app-owned contracts for providers and workflows
+chains/
+  -> LangChain-backed LLM workflows
+adapters/
+  -> concrete provider/tool implementations
+composition/
+  -> dependency wiring and runtime selection
+```
+
+Rules:
+
+- `services/` should not import LangChain directly.
+- `chains/` owns LangChain prompt templates, output parsers, and LLM workflow construction.
+- `adapters/*/llm.py` implement the low-level `LlmProvider` port only; they do not own RAG or safety prompts.
+- `composition/container.py` wires services to app-owned ports such as `SafetyClassifierPort` and `AnswerSynthesizerPort`.
+- MCP clients remain adapters for external tool boundaries, while the main query orchestration stays inside the API Host.
+
 ## LangGraph Multi-Agent Strategy
 
 LangGraph will be used where it adds a clear portfolio and engineering benefit,
