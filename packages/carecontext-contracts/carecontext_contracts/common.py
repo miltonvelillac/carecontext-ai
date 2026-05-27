@@ -7,6 +7,11 @@ class LanguageCode(StrEnum):
     ES = "es"
 
 
+class SourceType(StrEnum):
+    CURATED = "curated"
+    UPLOADED = "uploaded"
+
+
 class McpTransport(StrEnum):
     STDIO = "stdio"
 

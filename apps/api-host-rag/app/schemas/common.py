@@ -1,13 +1,8 @@
 from datetime import datetime
 from enum import StrEnum
 
-from carecontext_contracts.common import LanguageCode
+from carecontext_contracts.common import LanguageCode, SourceType
 from pydantic import BaseModel, Field
-
-
-class SourceType(StrEnum):
-    CURATED = "curated"
-    UPLOADED = "uploaded"
 
 
 class DocumentStatus(StrEnum):

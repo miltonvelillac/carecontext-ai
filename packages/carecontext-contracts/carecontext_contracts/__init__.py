@@ -7,6 +7,7 @@ from carecontext_contracts.common import (
     ProviderCapability,
     ProviderName,
     RuntimeCommand,
+    SourceType,
 )
 from carecontext_contracts.document_mcp import (
     CleanedDocumentText,
@@ -15,6 +16,17 @@ from carecontext_contracts.document_mcp import (
     DocumentToolMetadata,
     ExtractedDocument,
 )
+from carecontext_contracts.retrieval_mcp import (
+    HybridSearchResult,
+    RerankResultsResult,
+    RerankedChunk,
+    RetrievalDocumentChunk,
+    RetrievalFilter,
+    RetrievalMcpArgumentName,
+    RetrievalMcpToolName,
+    RetrievedChunk,
+    UpsertChunksResult,
+)
 
 __all__ = [
     "CleanedDocumentText",
@@ -22,6 +34,7 @@ __all__ = [
     "DocumentMcpToolName",
     "DocumentToolMetadata",
     "ExtractedDocument",
+    "HybridSearchResult",
     "LanguageCode",
     "MetadataKey",
     "MetadataValue",
@@ -29,5 +42,14 @@ __all__ = [
     "MimeType",
     "ProviderCapability",
     "ProviderName",
+    "RerankResultsResult",
+    "RerankedChunk",
+    "RetrievalDocumentChunk",
+    "RetrievalFilter",
+    "RetrievalMcpArgumentName",
+    "RetrievalMcpToolName",
+    "RetrievedChunk",
     "RuntimeCommand",
+    "SourceType",
+    "UpsertChunksResult",
 ]
