@@ -19,6 +19,7 @@
 - **Frontend:** ReactJS + TypeScript.
 - **Backend:** FastAPI + Pydantic.
 - **Orchestration:** LangChain baseline; LangGraph only when graph/state or multi-agent flow is useful.
+- **LLM workflow standard:** all LLM-mediated workflows in the API Host use LangChain prompt templates and parsers for prompt construction and structured output parsing. Provider adapters only execute model calls behind ports.
 - **Provider pattern:** ports/adapters + dependency injection + composition-root factory.
 - **Initial real provider:** OpenAI adapters for LLM, embeddings, STT, and TTS.
 - **Test providers:** mock/fake providers for deterministic tests.
