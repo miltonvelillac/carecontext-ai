@@ -5,41 +5,19 @@ depend on ports and DTOs instead of FastAPI request objects.
 """
 
 from carecontext_contracts.common import ProviderName
-from langchain_core.prompts import ChatPromptTemplate
 
 from app.schemas.audio import TextToSpeechResult, TranscriptionResult
 from app.schemas.citations import Citation
 from app.schemas.common import LanguageCode
 from app.schemas.query import AudioQueryRequest, RagAnswerResponse, RetrievedContextChunk, TextQueryRequest
 from app.schemas.safety import SafetyAction
-from app.ports.llm import LlmProvider, LlmRequest
 from app.ports.retrieval_tools import RetrievalFilter as PortRetrievalFilter
 from app.ports.retrieval_tools import RetrievalToolsPort, RetrievedChunk
+from app.ports.safety import SafetyClassifierPort
+from app.ports.synthesis import AnswerSynthesizerPort
 from app.services.safety_service import (
     apply_safety_caveat,
-    classify_query_safety,
     crisis_response,
-)
-
-RAG_PROMPT_TEMPLATE = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            "You are a bilingual educational health and psychology RAG assistant. "
-            "You must stay grounded in the provided context and avoid unsupported "
-            "medical claims.",
-        ),
-        (
-            "human",
-            "Answer the question using only the retrieved context. "
-            "If the context is empty or insufficient, say that relevant context was "
-            "not found. Keep the answer educational, avoid diagnosis or treatment "
-            "instructions, and mention that it is not medical advice.\n\n"
-            "Language: {language}\n\n"
-            "Retrieved context:\n{context}\n\n"
-            "Question: {query}",
-        ),
-    ]
 )
 
 
@@ -77,57 +55,13 @@ def _to_retrieved_context(chunk: RetrievedChunk) -> RetrievedContextChunk:
     )
 
 
-def _build_rag_prompt(
-    query: str,
-    retrieved_chunks: list[RetrievedChunk],
-    language: LanguageCode,
-) -> str:
-    context = "\n".join(
-        f"[{index}] {chunk.title} ({chunk.chunk_id}): {chunk.snippet}"
-        for index, chunk in enumerate(retrieved_chunks, start=1)
-    )
-    messages = RAG_PROMPT_TEMPLATE.format_messages(
-        language=str(language),
-        context=context,
-        query=query,
-    )
-    return "\n\n".join(message.content for message in messages)
-
-
-def _rag_system_prompt() -> str:
-    system_message = RAG_PROMPT_TEMPLATE.messages[0].format()
-    return str(system_message.content)
-
-
-async def _compose_grounded_answer(
-    *,
-    query: str,
-    language: LanguageCode,
-    retrieved_chunks: list[RetrievedChunk],
-    llm_provider: LlmProvider,
-) -> str:
-    if not retrieved_chunks:
-        return (
-            "I could not find relevant context in the indexed documents for this question. "
-            "This assistant is educational and not a substitute for professional care."
-        )
-
-    response = await llm_provider.generate(
-        LlmRequest(
-            prompt=_build_rag_prompt(query, retrieved_chunks, language),
-            system_prompt=_rag_system_prompt(),
-            language=str(language),
-        )
-    )
-    return response.text
-
-
 async def answer_text_query(
     request: TextQueryRequest,
     retrieval_tools: RetrievalToolsPort,
-    llm_provider: LlmProvider,
+    safety_classifier: SafetyClassifierPort,
+    answer_synthesizer: AnswerSynthesizerPort,
 ) -> RagAnswerResponse:
-    safety = await classify_query_safety(request.query, llm_provider)
+    safety = await safety_classifier.classify(request.query)
     if safety.action == SafetyAction.REDIRECT:
         return RagAnswerResponse(
             answer=crisis_response(safety),
@@ -147,11 +81,10 @@ async def answer_text_query(
     )
     return RagAnswerResponse(
         answer=apply_safety_caveat(
-            await _compose_grounded_answer(
+            await answer_synthesizer.synthesize(
                 query=request.query,
                 language=request.language,
                 retrieved_chunks=retrieved_chunks,
-                llm_provider=llm_provider,
             ),
             safety,
         ),
@@ -169,10 +102,11 @@ async def answer_audio_query(
     filename: str | None,
     request: AudioQueryRequest,
     retrieval_tools: RetrievalToolsPort,
-    llm_provider: LlmProvider,
+    safety_classifier: SafetyClassifierPort,
+    answer_synthesizer: AnswerSynthesizerPort,
 ) -> RagAnswerResponse:
     transcribed_query = f"Mock transcription for {filename or 'audio input'}"
-    safety = await classify_query_safety(transcribed_query, llm_provider)
+    safety = await safety_classifier.classify(transcribed_query)
     if safety.action == SafetyAction.REDIRECT:
         transcription = TranscriptionResult(
             text=transcribed_query,
@@ -205,11 +139,10 @@ async def answer_audio_query(
     )
     return RagAnswerResponse(
         answer=apply_safety_caveat(
-            await _compose_grounded_answer(
+            await answer_synthesizer.synthesize(
                 query=transcribed_query,
                 language=request.language,
                 retrieved_chunks=retrieved_chunks,
-                llm_provider=llm_provider,
             ),
             safety,
         ),

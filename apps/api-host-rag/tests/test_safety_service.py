@@ -1,7 +1,7 @@
 import pytest
 
 from app.ports.llm import LlmRequest, LlmResponse
-from app.services.safety_service import classify_query_safety
+from app.chains.langchain_safety_classifier import LangChainSafetyClassifier
 
 
 class StaticSafetyLlmProvider:
@@ -28,7 +28,9 @@ async def test_classify_query_safety_allows_normal_educational_query() -> None:
         """
     )
 
-    safety = await classify_query_safety("How can sleep routines help with stress?", llm_provider)
+    safety = await LangChainSafetyClassifier(llm_provider).classify(
+        "How can sleep routines help with stress?"
+    )
 
     assert safety.risk_level == "low"
     assert safety.action == "allow"
@@ -39,19 +41,19 @@ async def test_classify_query_safety_allows_normal_educational_query() -> None:
 
 @pytest.mark.asyncio
 async def test_classify_query_safety_redirects_crisis_intent() -> None:
-    safety = await classify_query_safety(
+    llm_provider = StaticSafetyLlmProvider(
+        """
+        {
+          "risk_level": "crisis",
+          "action": "redirect",
+          "disclaimer": "Educational information only. Not medical advice.",
+          "reasons": ["self_harm"],
+          "escalation_message": "Call emergency services now."
+        }
+        """
+    )
+    safety = await LangChainSafetyClassifier(llm_provider).classify(
         "No quiero vivir y quiero hacerme dano",
-        StaticSafetyLlmProvider(
-            """
-            {
-              "risk_level": "crisis",
-              "action": "redirect",
-              "disclaimer": "Educational information only. Not medical advice.",
-              "reasons": ["self_harm"],
-              "escalation_message": "Call emergency services now."
-            }
-            """
-        ),
     )
 
     assert safety.risk_level == "crisis"
@@ -62,19 +64,19 @@ async def test_classify_query_safety_redirects_crisis_intent() -> None:
 
 @pytest.mark.asyncio
 async def test_classify_query_safety_caveats_sensitive_medical_question() -> None:
-    safety = await classify_query_safety(
+    llm_provider = StaticSafetyLlmProvider(
+        """
+        {
+          "risk_level": "medium",
+          "action": "caveat",
+          "disclaimer": "Educational information only. Not medical advice.",
+          "reasons": ["medication_dosage"],
+          "escalation_message": null
+        }
+        """
+    )
+    safety = await LangChainSafetyClassifier(llm_provider).classify(
         "Debo tomar una dosis de medicamento para dormir?",
-        StaticSafetyLlmProvider(
-            """
-            {
-              "risk_level": "medium",
-              "action": "caveat",
-              "disclaimer": "Educational information only. Not medical advice.",
-              "reasons": ["medication_dosage"],
-              "escalation_message": null
-            }
-            """
-        ),
     )
 
     assert safety.risk_level == "medium"
@@ -84,9 +86,8 @@ async def test_classify_query_safety_caveats_sensitive_medical_question() -> Non
 
 @pytest.mark.asyncio
 async def test_classify_query_safety_fails_closed_when_llm_returns_invalid_json() -> None:
-    safety = await classify_query_safety(
-        "How can sleep routines help?",
-        StaticSafetyLlmProvider("not json"),
+    safety = await LangChainSafetyClassifier(StaticSafetyLlmProvider("not json")).classify(
+        "How can sleep routines help?"
     )
 
     assert safety.risk_level == "high"

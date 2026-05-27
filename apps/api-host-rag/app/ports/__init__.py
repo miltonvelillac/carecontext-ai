@@ -20,8 +20,11 @@ from app.ports.speech import (
     TextToSpeechProvider,
     TranscriptionResult,
 )
+from app.ports.safety import SafetyClassifierPort
+from app.ports.synthesis import AnswerSynthesizerPort
 
 __all__ = [
+    "AnswerSynthesizerPort",
     "AudioResult",
     "CleanedDocumentText",
     "DocumentToolMetadata",
@@ -36,6 +39,7 @@ __all__ = [
     "RetrievalFilter",
     "RetrievalToolsPort",
     "RetrievedChunk",
+    "SafetyClassifierPort",
     "SpeechToTextProvider",
     "TextToSpeechProvider",
     "TranscriptionResult",

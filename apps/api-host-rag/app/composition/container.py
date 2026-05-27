@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 
 from carecontext_contracts.common import McpTransport, ProviderName
+from app.chains.langchain_answer_synthesizer import LangChainAnswerSynthesizer
+from app.chains.langchain_safety_classifier import LangChainSafetyClassifier
 from app.adapters.mock.document_repository import MockDocumentRepository
 from app.adapters.mock.llm import MockLlmProvider
 from app.adapters.mcp.document_mcp_client import DocumentMcpClient
@@ -19,6 +21,8 @@ from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.document_tools import DocumentToolsPort
 from app.ports.llm import LlmProvider
 from app.ports.retrieval_tools import RetrievalToolsPort
+from app.ports.safety import SafetyClassifierPort
+from app.ports.synthesis import AnswerSynthesizerPort
 
 
 class AppContainer:
@@ -40,15 +44,23 @@ class AppContainer:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._llm_provider: LlmProvider | None = None
+        self._answer_synthesizer: AnswerSynthesizerPort | None = None
         self._document_tools: DocumentToolsPort | None = None
         self._retrieval_tools: RetrievalToolsPort | None = None
         self._document_repository: DocumentRepositoryPort | None = None
+        self._safety_classifier: SafetyClassifierPort | None = None
 
     @property
     def llm_provider(self) -> LlmProvider:
         if self._llm_provider is None:
             self._llm_provider = build_llm_provider(self.settings)
         return self._llm_provider
+
+    @property
+    def answer_synthesizer(self) -> AnswerSynthesizerPort:
+        if self._answer_synthesizer is None:
+            self._answer_synthesizer = build_answer_synthesizer(self.llm_provider)
+        return self._answer_synthesizer
 
     @property
     def document_tools(self) -> DocumentToolsPort:
@@ -68,6 +80,12 @@ class AppContainer:
             self._document_repository = build_document_repository(self.settings)
         return self._document_repository
 
+    @property
+    def safety_classifier(self) -> SafetyClassifierPort:
+        if self._safety_classifier is None:
+            self._safety_classifier = build_safety_classifier(self.llm_provider)
+        return self._safety_classifier
+
 
 def build_llm_provider(settings: Settings) -> LlmProvider:
     """Factory function for answer synthesis providers."""
@@ -77,6 +95,18 @@ def build_llm_provider(settings: Settings) -> LlmProvider:
     if settings.llm_provider == ProviderName.OPENAI:
         raise ValueError("OpenAI LLM adapter is not implemented yet. Use LLM_PROVIDER=mock.")
     raise ValueError(f"Unsupported LLM provider '{settings.llm_provider}'.")
+
+
+def build_answer_synthesizer(llm_provider: LlmProvider) -> AnswerSynthesizerPort:
+    """Factory function for answer synthesis workflows."""
+
+    return LangChainAnswerSynthesizer(llm_provider)
+
+
+def build_safety_classifier(llm_provider: LlmProvider) -> SafetyClassifierPort:
+    """Factory function for safety classification workflows."""
+
+    return LangChainSafetyClassifier(llm_provider)
 
 
 def build_document_tools(settings: Settings) -> DocumentToolsPort:

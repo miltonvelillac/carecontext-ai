@@ -1,9 +1,8 @@
 import pytest
-from pydantic import BaseModel
 
-from app.ports.llm import LlmRequest, LlmResponse
 from app.ports.retrieval_tools import RetrievalFilter, RetrievedChunk
 from app.schemas.query import TextQueryRequest
+from app.schemas.safety import SafetyAction, SafetyAssessment, SafetyRiskLevel
 from app.services.query_service import answer_text_query
 
 
@@ -31,64 +30,104 @@ class FakeRetrievalTools:
         ]
 
 
-class CapturingLlmProvider:
-    def __init__(self) -> None:
-        self.requests: list[LlmRequest] = []
+class FakeSafetyClassifier:
+    def __init__(self, safety: SafetyAssessment) -> None:
+        self.safety = safety
+        self.queries: list[str] = []
 
-    async def generate(self, request: LlmRequest) -> LlmResponse:
-        self.requests.append(request)
-        if request.system_prompt and "safety classifier" in request.system_prompt.lower():
-            return LlmResponse(text=_safety_response_for_prompt(request.prompt), model="test-llm")
-        return LlmResponse(text="LLM grounded answer.", model="test-llm")
+    async def classify(self, query: str) -> SafetyAssessment:
+        self.queries.append(query)
+        return self.safety
+
+
+class CapturingAnswerSynthesizer:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list[RetrievedChunk]]] = []
+
+    async def synthesize(
+        self,
+        *,
+        query: str,
+        language,
+        retrieved_chunks: list[RetrievedChunk],
+    ) -> str:
+        del language
+        self.calls.append((query, retrieved_chunks))
+        return "Synthesized grounded answer."
+
+
+def _low_safety() -> SafetyAssessment:
+    return SafetyAssessment(risk_level=SafetyRiskLevel.LOW, action=SafetyAction.ALLOW)
+
+
+def _caveat_safety() -> SafetyAssessment:
+    return SafetyAssessment(
+        risk_level=SafetyRiskLevel.MEDIUM,
+        action=SafetyAction.CAVEAT,
+        disclaimer=(
+            "Educational information only. This is not a diagnosis or treatment plan. "
+            "For personal medical decisions, consult a qualified health professional."
+        ),
+        reasons=["medication"],
+    )
+
+
+def _crisis_safety() -> SafetyAssessment:
+    return SafetyAssessment(
+        risk_level=SafetyRiskLevel.CRISIS,
+        action=SafetyAction.REDIRECT,
+        reasons=["self_harm"],
+        escalation_message="Call emergency services now.",
+    )
 
 
 @pytest.mark.asyncio
-async def test_answer_text_query_uses_llm_with_retrieved_context() -> None:
-    llm_provider = CapturingLlmProvider()
+async def test_answer_text_query_uses_synthesizer_with_retrieved_chunks() -> None:
     retrieval_tools = FakeRetrievalTools()
+    safety_classifier = FakeSafetyClassifier(_low_safety())
+    answer_synthesizer = CapturingAnswerSynthesizer()
 
     response = await answer_text_query(
         TextQueryRequest(query="How can sleep routines help?", top_k=3),
         retrieval_tools,
-        llm_provider,
+        safety_classifier,
+        answer_synthesizer,
     )
 
-    assert response.answer == "LLM grounded answer."
+    assert response.answer == "Synthesized grounded answer."
     assert response.safety.risk_level == "low"
     assert len(retrieval_tools.calls) == 1
     assert response.citations[0].chunk_id == "doc-1-chunk-001"
-    assert len(llm_provider.requests) == 2
-    assert "Retrieved context:" in llm_provider.requests[1].prompt
-    assert "Consistent sleep routines" in llm_provider.requests[1].prompt
-    assert "How can sleep routines help?" in llm_provider.requests[1].prompt
+    assert len(answer_synthesizer.calls) == 1
+    assert answer_synthesizer.calls[0][0] == "How can sleep routines help?"
+    assert answer_synthesizer.calls[0][1][0].chunk_id == "doc-1-chunk-001"
 
 
 @pytest.mark.asyncio
 async def test_answer_text_query_adds_caveat_for_sensitive_medical_query() -> None:
-    llm_provider = CapturingLlmProvider()
-
     response = await answer_text_query(
         TextQueryRequest(query="Should I take medication for anxiety?", top_k=3),
         FakeRetrievalTools(),
-        llm_provider,
+        FakeSafetyClassifier(_caveat_safety()),
+        CapturingAnswerSynthesizer(),
     )
 
     assert response.safety.risk_level == "medium"
     assert response.safety.action == "caveat"
     assert "not a diagnosis or treatment plan" in response.answer.lower()
-    assert response.answer.endswith("LLM grounded answer.")
-    assert len(llm_provider.requests) == 2
+    assert response.answer.endswith("Synthesized grounded answer.")
 
 
 @pytest.mark.asyncio
-async def test_answer_text_query_redirects_crisis_without_retrieval_or_llm() -> None:
-    llm_provider = CapturingLlmProvider()
+async def test_answer_text_query_redirects_crisis_without_retrieval_or_synthesis() -> None:
     retrieval_tools = FakeRetrievalTools()
+    answer_synthesizer = CapturingAnswerSynthesizer()
 
     response = await answer_text_query(
         TextQueryRequest(query="I want to kill myself", top_k=3),
         retrieval_tools,
-        llm_provider,
+        FakeSafetyClassifier(_crisis_safety()),
+        answer_synthesizer,
     )
 
     assert response.safety.risk_level == "crisis"
@@ -98,11 +137,11 @@ async def test_answer_text_query_redirects_crisis_without_retrieval_or_llm() -> 
     assert response.citations == []
     assert response.retrieved_context == []
     assert retrieval_tools.calls == []
-    assert len(llm_provider.requests) == 1
+    assert answer_synthesizer.calls == []
 
 
 @pytest.mark.asyncio
-async def test_answer_text_query_does_not_call_llm_without_results() -> None:
+async def test_answer_text_query_delegates_empty_retrieval_response_to_synthesizer() -> None:
     class EmptyRetrievalTools:
         async def retrieve_chunks(
             self,
@@ -112,51 +151,12 @@ async def test_answer_text_query_does_not_call_llm_without_results() -> None:
         ) -> list[RetrievedChunk]:
             return []
 
-    llm_provider = CapturingLlmProvider()
-
     response = await answer_text_query(
         TextQueryRequest(query="What helps stress?", top_k=3),
         EmptyRetrievalTools(),
-        llm_provider,
+        FakeSafetyClassifier(_low_safety()),
+        CapturingAnswerSynthesizer(),
     )
 
-    assert "could not find relevant context" in response.answer.lower()
-    assert len(llm_provider.requests) == 1
-
-
-def _safety_response_for_prompt(prompt: str) -> str:
-    normalized_query = prompt.split("User query:", maxsplit=1)[-1].lower()
-    if "kill myself" in normalized_query:
-        return SafetyPayload(
-            risk_level="crisis",
-            action="redirect",
-            disclaimer="Educational information only. Not medical advice.",
-            reasons=["self_harm"],
-            escalation_message="Call emergency services now.",
-        ).model_dump_json()
-    if "medication" in normalized_query:
-        return SafetyPayload(
-            risk_level="medium",
-            action="caveat",
-            disclaimer=(
-                "Educational information only. This is not a diagnosis or treatment plan. "
-                "For personal medical decisions, consult a qualified health professional."
-            ),
-            reasons=["medication"],
-            escalation_message=None,
-        ).model_dump_json()
-    return SafetyPayload(
-        risk_level="low",
-        action="allow",
-        disclaimer="Educational information only. Not medical advice.",
-        reasons=[],
-        escalation_message=None,
-    ).model_dump_json()
-
-
-class SafetyPayload(BaseModel):
-    risk_level: str
-    action: str
-    disclaimer: str
-    reasons: list[str]
-    escalation_message: str | None
+    assert response.answer == "Synthesized grounded answer."
+    assert response.citations == []
