@@ -11,10 +11,15 @@ from app.schemas.audio import TextToSpeechResult, TranscriptionResult
 from app.schemas.citations import Citation
 from app.schemas.common import LanguageCode
 from app.schemas.query import AudioQueryRequest, RagAnswerResponse, RetrievedContextChunk, TextQueryRequest
-from app.schemas.safety import SafetyAction, SafetyAssessment, SafetyRiskLevel
+from app.schemas.safety import SafetyAction
 from app.ports.llm import LlmProvider, LlmRequest
 from app.ports.retrieval_tools import RetrievalFilter as PortRetrievalFilter
 from app.ports.retrieval_tools import RetrievalToolsPort, RetrievedChunk
+from app.services.safety_service import (
+    apply_safety_caveat,
+    classify_query_safety,
+    crisis_response,
+)
 
 RAG_PROMPT_TEMPLATE = ChatPromptTemplate.from_messages(
     [
@@ -36,14 +41,6 @@ RAG_PROMPT_TEMPLATE = ChatPromptTemplate.from_messages(
         ),
     ]
 )
-
-
-def _mock_safety() -> SafetyAssessment:
-    return SafetyAssessment(
-        risk_level=SafetyRiskLevel.LOW,
-        action=SafetyAction.ALLOW,
-        disclaimer="Educational information only. Not medical advice.",
-    )
 
 
 def _to_port_filters(request: TextQueryRequest | AudioQueryRequest) -> PortRetrievalFilter | None:
@@ -130,20 +127,36 @@ async def answer_text_query(
     retrieval_tools: RetrievalToolsPort,
     llm_provider: LlmProvider,
 ) -> RagAnswerResponse:
+    safety = await classify_query_safety(request.query, llm_provider)
+    if safety.action == SafetyAction.REDIRECT:
+        return RagAnswerResponse(
+            answer=crisis_response(safety),
+            citations=[],
+            safety=safety,
+            retrieved_context=[],
+            tts=TextToSpeechResult(audio_id="mock-tts", provider=ProviderName.MOCK, model="mock-tts")
+            if request.include_tts
+            else None,
+            trace_id="mock-trace-text",
+        )
+
     retrieved_chunks = await retrieval_tools.retrieve_chunks(
         query=request.query,
         top_k=request.top_k,
         filters=_to_port_filters(request),
     )
     return RagAnswerResponse(
-        answer=await _compose_grounded_answer(
-            query=request.query,
-            language=request.language,
-            retrieved_chunks=retrieved_chunks,
-            llm_provider=llm_provider,
+        answer=apply_safety_caveat(
+            await _compose_grounded_answer(
+                query=request.query,
+                language=request.language,
+                retrieved_chunks=retrieved_chunks,
+                llm_provider=llm_provider,
+            ),
+            safety,
         ),
         citations=[_to_citation(chunk) for chunk in retrieved_chunks],
-        safety=_mock_safety(),
+        safety=safety,
         retrieved_context=[_to_retrieved_context(chunk) for chunk in retrieved_chunks],
         tts=TextToSpeechResult(audio_id="mock-tts", provider=ProviderName.MOCK, model="mock-tts")
         if request.include_tts
@@ -159,6 +172,26 @@ async def answer_audio_query(
     llm_provider: LlmProvider,
 ) -> RagAnswerResponse:
     transcribed_query = f"Mock transcription for {filename or 'audio input'}"
+    safety = await classify_query_safety(transcribed_query, llm_provider)
+    if safety.action == SafetyAction.REDIRECT:
+        transcription = TranscriptionResult(
+            text=transcribed_query,
+            language=request.language if request.language != LanguageCode.AUTO else None,
+            provider=ProviderName.MOCK,
+            model="mock-stt",
+        )
+        return RagAnswerResponse(
+            answer=crisis_response(safety),
+            citations=[],
+            safety=safety,
+            retrieved_context=[],
+            transcription=transcription,
+            tts=TextToSpeechResult(audio_id="mock-tts", provider=ProviderName.MOCK, model="mock-tts")
+            if request.include_tts
+            else None,
+            trace_id="mock-trace-audio",
+        )
+
     retrieved_chunks = await retrieval_tools.retrieve_chunks(
         query=transcribed_query,
         top_k=request.top_k,
@@ -171,14 +204,17 @@ async def answer_audio_query(
         model="mock-stt",
     )
     return RagAnswerResponse(
-        answer=await _compose_grounded_answer(
-            query=transcribed_query,
-            language=request.language,
-            retrieved_chunks=retrieved_chunks,
-            llm_provider=llm_provider,
+        answer=apply_safety_caveat(
+            await _compose_grounded_answer(
+                query=transcribed_query,
+                language=request.language,
+                retrieved_chunks=retrieved_chunks,
+                llm_provider=llm_provider,
+            ),
+            safety,
         ),
         citations=[_to_citation(chunk) for chunk in retrieved_chunks],
-        safety=_mock_safety(),
+        safety=safety,
         retrieved_context=[_to_retrieved_context(chunk) for chunk in retrieved_chunks],
         transcription=transcription,
         tts=TextToSpeechResult(audio_id="mock-tts", provider=ProviderName.MOCK, model="mock-tts")
