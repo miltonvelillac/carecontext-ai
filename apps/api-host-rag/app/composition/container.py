@@ -6,11 +6,13 @@ routes or use-case services.
 """
 
 import shlex
+import os
+from pathlib import Path
 
 from carecontext_contracts.common import McpTransport
 from app.adapters.mock.document_repository import MockDocumentRepository
 from app.adapters.mcp.document_mcp_client import DocumentMcpClient
-from app.adapters.mock.retrieval_tools import MockRetrievalTools
+from app.adapters.mcp.retrieval_mcp_client import RetrievalMcpClient
 from app.core.config import Settings
 from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.document_tools import DocumentToolsPort
@@ -76,8 +78,17 @@ def build_document_tools(settings: Settings) -> DocumentToolsPort:
 def build_retrieval_tools(settings: Settings) -> RetrievalToolsPort:
     """Factory function for the retrieval tools strategy."""
 
-    del settings
-    return MockRetrievalTools()
+    if settings.retrieval_mcp_transport != McpTransport.STDIO:
+        raise ValueError(
+            "Unsupported Retrieval MCP transport "
+            f"'{settings.retrieval_mcp_transport}'. Supported: {McpTransport.STDIO}"
+        )
+    return RetrievalMcpClient(
+        command=settings.retrieval_mcp_command,
+        args=shlex.split(settings.retrieval_mcp_args) if settings.retrieval_mcp_args else None,
+        cwd=settings.retrieval_mcp_cwd,
+        env=_build_retrieval_mcp_env(settings),
+    )
 
 
 def build_document_repository(settings: Settings) -> DocumentRepositoryPort:
@@ -85,3 +96,16 @@ def build_document_repository(settings: Settings) -> DocumentRepositoryPort:
 
     del settings
     return MockDocumentRepository()
+
+
+def _build_retrieval_mcp_env(settings: Settings) -> dict[str, str]:
+    env = os.environ.copy()
+    if settings.chroma_host:
+        env["CARECONTEXT_CHROMA_HOST"] = settings.chroma_host
+        env["CARECONTEXT_CHROMA_PORT"] = str(settings.chroma_port)
+        env.pop("CARECONTEXT_CHROMA_PATH", None)
+    else:
+        env["CARECONTEXT_CHROMA_PATH"] = str(Path(settings.data_dir) / "chroma")
+        env.pop("CARECONTEXT_CHROMA_HOST", None)
+        env.pop("CARECONTEXT_CHROMA_PORT", None)
+    return env

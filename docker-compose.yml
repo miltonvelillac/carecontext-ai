@@ -5,6 +5,9 @@ services:
       dockerfile: apps/api-host-rag/Dockerfile
     env_file:
       - .env
+    environment:
+      CHROMA_HOST: chroma
+      CHROMA_PORT: "8000"
     ports:
       - "8000:8000"
     volumes:

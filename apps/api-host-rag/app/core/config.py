@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     openai_tts_model: str | None = None
 
     data_dir: str = "./data"
-    chroma_host: str = "localhost"
+    chroma_host: str | None = None
     chroma_port: int = 8000
 
     document_mcp_transport: McpTransport = McpTransport.STDIO
@@ -32,3 +32,6 @@ class Settings(BaseSettings):
     document_mcp_command: RuntimeCommand = RuntimeCommand.PYTHON
     document_mcp_args: str | None = None
     document_mcp_cwd: str | None = None
+    retrieval_mcp_command: RuntimeCommand = RuntimeCommand.PYTHON
+    retrieval_mcp_args: str | None = None
+    retrieval_mcp_cwd: str | None = None

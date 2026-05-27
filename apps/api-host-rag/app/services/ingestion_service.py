@@ -65,7 +65,7 @@ async def upload_document(
         status=DocumentStatus.UPLOADED,
         source_type=SourceType.UPLOADED,
         message=(
-            "Upload accepted and processed with mock document/retrieval adapters. "
+            "Upload accepted and processed. "
             f"Inserted chunks: {upsert_result.inserted_count}."
         ),
         document=document,
