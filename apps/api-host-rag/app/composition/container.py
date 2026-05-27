@@ -16,6 +16,7 @@ from app.adapters.mock.document_repository import MockDocumentRepository
 from app.adapters.mock.llm import MockLlmProvider
 from app.adapters.mcp.document_mcp_client import DocumentMcpClient
 from app.adapters.mcp.retrieval_mcp_client import RetrievalMcpClient
+from app.adapters.openai.llm import OpenAiLlmProvider
 from app.core.config import Settings
 from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.document_tools import DocumentToolsPort
@@ -93,7 +94,12 @@ def build_llm_provider(settings: Settings) -> LlmProvider:
     if settings.llm_provider == ProviderName.MOCK:
         return MockLlmProvider()
     if settings.llm_provider == ProviderName.OPENAI:
-        raise ValueError("OpenAI LLM adapter is not implemented yet. Use LLM_PROVIDER=mock.")
+        if not settings.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai.")
+        return OpenAiLlmProvider(
+            api_key=settings.openai_api_key,
+            model=settings.openai_llm_model,
+        )
     raise ValueError(f"Unsupported LLM provider '{settings.llm_provider}'.")
 
 
