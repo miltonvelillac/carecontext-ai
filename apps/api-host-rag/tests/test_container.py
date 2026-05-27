@@ -1,8 +1,15 @@
 from pathlib import Path
 
+from app.adapters.mock.llm import MockLlmProvider
 from app.adapters.mcp.retrieval_mcp_client import RetrievalMcpClient
-from app.composition.container import build_retrieval_tools
+from app.composition.container import build_llm_provider, build_retrieval_tools
 from app.core.config import Settings
+
+
+def test_build_llm_provider_uses_mock_provider_by_default() -> None:
+    llm_provider = build_llm_provider(Settings())
+
+    assert isinstance(llm_provider, MockLlmProvider)
 
 
 def test_build_retrieval_tools_uses_retrieval_mcp_client_with_local_chroma_path(

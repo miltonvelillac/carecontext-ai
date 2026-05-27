@@ -60,7 +60,7 @@ class RetrievalToolsPort(Protocol):
     async def upsert_chunks(self, chunks: list[DocumentChunk]) -> UpsertChunksResult:
         ...
 
-    async def hybrid_search(
+    async def retrieve_chunks(
         self,
         query: str,
         top_k: int,
@@ -71,7 +71,7 @@ class RetrievalToolsPort(Protocol):
     async def rerank_results(
         self,
         query: str,
-        results: list[RetrievedChunk],
+        retrieved_chunks: list[RetrievedChunk],
         top_k: int,
     ) -> list[RerankedChunk]:
         ...

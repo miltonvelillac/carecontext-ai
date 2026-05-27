@@ -98,7 +98,7 @@ class RetrievalMcpClient:
         )
         return UpsertChunksResult.model_validate(payload)
 
-    async def hybrid_search(
+    async def retrieve_chunks(
         self,
         query: str,
         top_k: int,
@@ -117,31 +117,34 @@ class RetrievalMcpClient:
             )
 
         payload = await self._call_tool(RetrievalMcpToolName.HYBRID_SEARCH, arguments)
-        result = HybridSearchResult.model_validate(payload)
-        return [RetrievedChunk.model_validate(chunk.model_dump()) for chunk in result.results]
+        search_result = HybridSearchResult.model_validate(payload)
+        return [
+            RetrievedChunk.model_validate(chunk.model_dump())
+            for chunk in search_result.results
+        ]
 
     async def rerank_results(
         self,
         query: str,
-        results: list[RetrievedChunk],
+        retrieved_chunks: list[RetrievedChunk],
         top_k: int,
     ) -> list[RerankedChunk]:
         contract_results = [
-            ContractRetrievedChunk.model_validate(result.model_dump(mode="json"))
-            for result in results
+            ContractRetrievedChunk.model_validate(chunk.model_dump(mode="json"))
+            for chunk in retrieved_chunks
         ]
         payload = await self._call_tool(
             RetrievalMcpToolName.RERANK_RESULTS,
             {
                 RetrievalMcpArgumentName.QUERY: query,
                 RetrievalMcpArgumentName.RESULTS: [
-                    result.model_dump(mode="json") for result in contract_results
+                    chunk.model_dump(mode="json") for chunk in contract_results
                 ],
                 RetrievalMcpArgumentName.TOP_K: top_k,
             },
         )
-        result = RerankResultsResult.model_validate(payload)
-        return [RerankedChunk.model_validate(chunk.model_dump()) for chunk in result.results]
+        rerank_result = RerankResultsResult.model_validate(payload)
+        return [RerankedChunk.model_validate(chunk.model_dump()) for chunk in rerank_result.results]
 
     async def _call_tool(
         self,

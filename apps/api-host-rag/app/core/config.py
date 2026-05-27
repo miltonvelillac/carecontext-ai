@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     environment: str = "local"
     log_level: str = "INFO"
 
-    llm_provider: ProviderName = ProviderName.OPENAI
+    llm_provider: ProviderName = ProviderName.MOCK
     embeddings_provider: ProviderName = ProviderName.OPENAI
     stt_provider: ProviderName = ProviderName.OPENAI
     tts_provider: ProviderName = ProviderName.OPENAI

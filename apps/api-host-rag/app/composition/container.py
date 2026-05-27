@@ -9,13 +9,15 @@ import shlex
 import os
 from pathlib import Path
 
-from carecontext_contracts.common import McpTransport
+from carecontext_contracts.common import McpTransport, ProviderName
 from app.adapters.mock.document_repository import MockDocumentRepository
+from app.adapters.mock.llm import MockLlmProvider
 from app.adapters.mcp.document_mcp_client import DocumentMcpClient
 from app.adapters.mcp.retrieval_mcp_client import RetrievalMcpClient
 from app.core.config import Settings
 from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.document_tools import DocumentToolsPort
+from app.ports.llm import LlmProvider
 from app.ports.retrieval_tools import RetrievalToolsPort
 
 
@@ -37,9 +39,16 @@ class AppContainer:
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        self._llm_provider: LlmProvider | None = None
         self._document_tools: DocumentToolsPort | None = None
         self._retrieval_tools: RetrievalToolsPort | None = None
         self._document_repository: DocumentRepositoryPort | None = None
+
+    @property
+    def llm_provider(self) -> LlmProvider:
+        if self._llm_provider is None:
+            self._llm_provider = build_llm_provider(self.settings)
+        return self._llm_provider
 
     @property
     def document_tools(self) -> DocumentToolsPort:
@@ -58,6 +67,16 @@ class AppContainer:
         if self._document_repository is None:
             self._document_repository = build_document_repository(self.settings)
         return self._document_repository
+
+
+def build_llm_provider(settings: Settings) -> LlmProvider:
+    """Factory function for answer synthesis providers."""
+
+    if settings.llm_provider == ProviderName.MOCK:
+        return MockLlmProvider()
+    if settings.llm_provider == ProviderName.OPENAI:
+        raise ValueError("OpenAI LLM adapter is not implemented yet. Use LLM_PROVIDER=mock.")
+    raise ValueError(f"Unsupported LLM provider '{settings.llm_provider}'.")
 
 
 def build_document_tools(settings: Settings) -> DocumentToolsPort:

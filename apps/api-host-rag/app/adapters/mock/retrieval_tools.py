@@ -46,7 +46,7 @@ class MockRetrievalTools:
             collection_name="mock-carecontext",
         )
 
-    async def hybrid_search(
+    async def retrieve_chunks(
         self,
         query: str,
         top_k: int,
@@ -67,11 +67,11 @@ class MockRetrievalTools:
     async def rerank_results(
         self,
         query: str,
-        results: list[RetrievedChunk],
+        retrieved_chunks: list[RetrievedChunk],
         top_k: int,
     ) -> list[RerankedChunk]:
         del query
         return [
-            RerankedChunk(chunk=result, rerank_score=result.score, reason="mock_rerank")
-            for result in results[:top_k]
+            RerankedChunk(chunk=chunk, rerank_score=chunk.score, reason="mock_rerank")
+            for chunk in retrieved_chunks[:top_k]
         ]

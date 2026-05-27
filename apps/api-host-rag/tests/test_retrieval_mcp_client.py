@@ -136,16 +136,16 @@ async def test_upsert_chunks_sends_json_compatible_contract_payload() -> None:
 
 
 @pytest.mark.asyncio
-async def test_hybrid_search_sends_json_compatible_filters() -> None:
+async def test_retrieve_chunks_sends_json_compatible_filters() -> None:
     client = CapturingRetrievalMcpClient()
 
-    results = await client.hybrid_search(
+    retrieved_chunks = await client.retrieve_chunks(
         "sleep routines",
         3,
         RetrievalFilter(source_types=[SourceType.CURATED], topic_tags=["sleep"], language=LanguageCode.EN),
     )
 
-    assert results[0].chunk_id == "doc-1-chunk-1"
+    assert retrieved_chunks[0].chunk_id == "doc-1-chunk-1"
     _, arguments = client.calls[0]
     assert arguments["filters"] == {
         "source_types": ["curated"],
