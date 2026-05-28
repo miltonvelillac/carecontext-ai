@@ -4,7 +4,7 @@ import os
 from typing import Any
 
 import chromadb
-from carecontext_contracts.common import ChromaHnswSpace, LanguageCode
+from carecontext_contracts.common import ChromaHnswSpace
 from carecontext_contracts.retrieval_mcp import (
     ChunkDocumentRequest,
     ChunkDocumentResult,
@@ -17,7 +17,8 @@ from carecontext_contracts.retrieval_mcp import (
     UpsertChunksResult,
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from embeddings import build_embeddings_provider, tokenize_text
+from embeddings import build_embeddings_provider
+from retrievers import HybridChunkRetriever
 
 COLLECTION_NAME = os.getenv("CARECONTEXT_CHROMA_COLLECTION", "carecontext_chunks")
 DEFAULT_CHROMA_HNSW_SPACE = ChromaHnswSpace.COSINE
@@ -104,15 +105,24 @@ def search_retrieval_chunks(
     top_k: int,
     filters: RetrievalFilter | None = None,
 ) -> HybridSearchResult:
+    """Search indexed chunks and return the best retrieval candidates for a query."""
+
+    # Guard clause: empty queries or non-positive limits should not hit Chroma.
     if not query.strip() or top_k <= 0:
         return HybridSearchResult()
 
+    # Open the configured Chroma collection and skip retrieval when it has no chunks.
     collection = _collection()
     collection_size = collection.count()
     if collection_size == 0:
         return HybridSearchResult()
 
+    # Normalize dict filters into the shared contract model so downstream code
+    # can read language, metadata filters, and min_score consistently.
     retrieval_filter = _normalize_filter(filters)
+
+    # Ask Chroma for a candidate pool larger than top_k. Chroma ranks these by
+    # vector distance only; the app reranks them later with hybrid scoring.
     n_results = min(collection_size, max(top_k * 5, top_k))
     raw_results = collection.query(
         query_embeddings=[_embeddings_provider().embed_text(query)],
@@ -120,25 +130,15 @@ def search_retrieval_chunks(
         include=["documents", "metadatas", "distances"],
     )
 
+    # Convert Chroma's column-oriented response into per-candidate dictionaries:
+    # chunk_id, document text, metadata, and vector distance.
     candidates = _query_candidates(raw_results)
-    filtered = [
-        candidate
-        for candidate in candidates
-        if _metadata_matches_filter(candidate["metadata"], retrieval_filter)
-    ]
-    ranked = sorted(
-        (_to_retrieved_chunk(candidate, query) for candidate in filtered),
-        key=lambda chunk: chunk.score,
-        reverse=True,
-    )
-    if retrieval_filter and retrieval_filter.min_score is not None:
-        # Optional similarity threshold: return fewer than top_k rather than
-        # padding the context with weakly related chunks.
-        ranked = [
-            chunk
-            for chunk in ranked
-            if chunk.score >= retrieval_filter.min_score
-        ]
+
+    # Apply metadata filters, compute hybrid scores, sort by relevance, and
+    # apply the optional min_score threshold.
+    ranked = HybridChunkRetriever().rank(candidates, query, retrieval_filter)
+
+    # Return at most top_k chunks after reranking and threshold filtering.
     return HybridSearchResult(results=ranked[:top_k])
 
 
@@ -158,7 +158,11 @@ def rerank_retrieval_results(
         (
             RerankedChunk(
                 chunk=result,
-                rerank_score=_hybrid_score(result.snippet, query, result.score),
+                rerank_score=HybridChunkRetriever.hybrid_score(
+                    result.snippet,
+                    query,
+                    result.score,
+                ),
                 reason="vector_score_plus_keyword_overlap",
             )
             for result in normalized_results
@@ -261,66 +265,3 @@ def _query_candidates(raw_results: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return candidates
-
-
-def _metadata_matches_filter(metadata: dict[str, Any], filters: RetrievalFilter | None) -> bool:
-    if filters is None:
-        return True
-    if filters.language != LanguageCode.AUTO and metadata.get("language") != str(filters.language):
-        return False
-    if filters.source_types and metadata.get("source_type") not in {
-        str(source_type) for source_type in filters.source_types
-    }:
-        return False
-    if filters.topic_tags:
-        indexed_tags = {
-            tag.strip()
-            for tag in str(metadata.get("topic_tags", "")).split(",")
-            if tag
-        }
-        if indexed_tags.isdisjoint(set(filters.topic_tags)):
-            return False
-    return True
-
-
-def _to_retrieved_chunk(candidate: dict[str, Any], query: str) -> RetrievedChunk:
-    metadata = candidate["metadata"]
-    document = candidate["document"]
-    vector_score = max(0.0, 1.0 - float(candidate["distance"]))
-    score = _hybrid_score(document, query, vector_score)
-    return RetrievedChunk(
-        doc_id=str(metadata.get("doc_id", "")),
-        chunk_id=str(metadata.get("chunk_id") or candidate["chunk_id"]),
-        title=str(metadata.get("title", "Untitled")),
-        snippet=_snippet(document),
-        score=round(score, 4),
-        section=metadata.get("section"),
-        metadata=_public_metadata(metadata),
-    )
-
-
-def _public_metadata(metadata: dict[str, Any]) -> dict[str, str]:
-    return {
-        str(key): str(value)
-        for key, value in metadata.items()
-        if key not in {"doc_id", "chunk_id", "title", "section"} and value is not None
-    }
-
-
-def _hybrid_score(text: str, query: str, vector_score: float) -> float:
-    return (0.75 * vector_score) + (0.25 * _keyword_overlap(text, query))
-
-
-def _keyword_overlap(text: str, query: str) -> float:
-    query_terms = set(tokenize_text(query))
-    if not query_terms:
-        return 0.0
-    text_terms = set(tokenize_text(text))
-    return len(query_terms & text_terms) / len(query_terms)
-
-
-def _snippet(text: str, max_length: int = 500) -> str:
-    compact = " ".join(text.split())
-    if len(compact) <= max_length:
-        return compact
-    return compact[: max_length - 3].rstrip() + "..."

@@ -10,6 +10,7 @@ COPY apps/api-host-rag/app ./app
 COPY services/document-mcp-server/document_processing.py ./services/document-mcp-server/document_processing.py
 COPY services/document-mcp-server/server.py ./services/document-mcp-server/server.py
 COPY services/retrieval-mcp-server/embeddings.py ./services/retrieval-mcp-server/embeddings.py
+COPY services/retrieval-mcp-server/retrievers.py ./services/retrieval-mcp-server/retrievers.py
 COPY services/retrieval-mcp-server/document_processing.py ./services/retrieval-mcp-server/document_processing.py
 COPY services/retrieval-mcp-server/server.py ./services/retrieval-mcp-server/server.py
 
