@@ -4,7 +4,7 @@ import os
 from typing import Any
 
 import chromadb
-from carecontext_contracts.common import ChromaHnswSpace
+from carecontext_contracts.common import ChromaHnswSpace, LanguageCode
 from carecontext_contracts.retrieval_mcp import (
     ChunkDocumentRequest,
     ChunkDocumentResult,
@@ -125,11 +125,15 @@ def search_retrieval_chunks(
     # Ask Chroma for a candidate pool larger than top_k. Chroma ranks these by
     # vector distance only; the app reranks them later with hybrid scoring.
     n_results = min(collection_size, top_k * _candidate_multiplier())
-    raw_results = collection.query(
-        query_embeddings=[_embeddings_provider().embed_text(query)],
-        n_results=n_results,
-        include=["documents", "metadatas", "distances"],
-    )
+    query_arguments: dict[str, Any] = {
+        "query_embeddings": [_embeddings_provider().embed_text(query)],
+        "n_results": n_results,
+        "include": ["documents", "metadatas", "distances"],
+    }
+    if chroma_where := _chroma_where_filter(retrieval_filter):
+        query_arguments["where"] = chroma_where
+
+    raw_results = collection.query(**query_arguments)
 
     # Convert Chroma's column-oriented response into per-candidate dictionaries:
     # chunk_id, document text, metadata, and vector distance.
@@ -230,6 +234,37 @@ def _normalize_filter(filters: dict[str, Any] | RetrievalFilter | None) -> Retri
     if filters is None:
         return None
     return filters if isinstance(filters, RetrievalFilter) else RetrievalFilter.model_validate(filters)
+
+
+def _chroma_where_filter(filters: RetrievalFilter | None) -> dict[str, Any] | None:
+    """Build Chroma-native metadata filters for exact-match fields.
+
+    Topic tags stay in the post-query retriever filter because they are stored as
+    comma-separated metadata strings, not as native Chroma arrays.
+    """
+
+    if filters is None:
+        return None
+
+    conditions: list[dict[str, Any]] = []
+    if filters.language != LanguageCode.AUTO:
+        conditions.append({"language": filters.language.value})
+    if len(filters.source_types) == 1:
+        conditions.append({"source_type": filters.source_types[0].value})
+    elif len(filters.source_types) > 1:
+        conditions.append(
+            {
+                "source_type": {
+                    "$in": [source_type.value for source_type in filters.source_types]
+                }
+            }
+        )
+
+    if not conditions:
+        return None
+    if len(conditions) == 1:
+        return conditions[0]
+    return {"$and": conditions}
 
 
 def _existing_ids(collection: Any, ids: list[str]) -> set[str]:

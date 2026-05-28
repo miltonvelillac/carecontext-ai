@@ -150,3 +150,48 @@ def test_search_retrieval_chunks_uses_configured_candidate_multiplier(
     processing.search_retrieval_chunks("sleep stress", top_k=3)
 
     assert captured["n_results"] == 24
+
+
+def test_search_retrieval_chunks_passes_supported_metadata_filters_to_chroma(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    processing = _load_retrieval_processing_module()
+    captured: dict[str, object] = {}
+
+    class FakeCollection:
+        def count(self) -> int:
+            return 100
+
+        def query(self, **kwargs):
+            captured.update(kwargs)
+            return {
+                "ids": [[]],
+                "documents": [[]],
+                "metadatas": [[]],
+                "distances": [[]],
+            }
+
+    class FakeEmbeddingsProvider:
+        def embed_text(self, text: str) -> list[float]:
+            del text
+            return [0.1, 0.2, 0.3]
+
+    monkeypatch.setattr(processing, "_collection", lambda: FakeCollection())
+    monkeypatch.setattr(processing, "_embeddings_provider", lambda: FakeEmbeddingsProvider())
+
+    processing.search_retrieval_chunks(
+        "sleep stress",
+        top_k=3,
+        filters=RetrievalFilter(
+            source_types=[SourceType.CURATED, SourceType.UPLOADED],
+            topic_tags=["sleep"],
+            language=LanguageCode.EN,
+        ),
+    )
+
+    assert captured["where"] == {
+        "$and": [
+            {"language": "en"},
+            {"source_type": {"$in": ["curated", "uploaded"]}},
+        ]
+    }
