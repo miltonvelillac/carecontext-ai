@@ -159,6 +159,9 @@ def _build_retrieval_mcp_env(settings: Settings) -> dict[str, str]:
     env = os.environ.copy()
     env["CARECONTEXT_EMBEDDINGS_PROVIDER"] = _retrieval_embeddings_provider(settings)
     env["CARECONTEXT_CHROMA_HNSW_SPACE"] = settings.chroma_hnsw_space.value
+    env["CARECONTEXT_RETRIEVAL_CANDIDATE_MULTIPLIER"] = str(
+        settings.retrieval_candidate_multiplier
+    )
     if settings.openai_embedding_model:
         env["OPENAI_EMBEDDING_MODEL"] = settings.openai_embedding_model
     if settings.openai_api_key:

@@ -22,6 +22,7 @@ from retrievers import HybridChunkRetriever
 
 COLLECTION_NAME = os.getenv("CARECONTEXT_CHROMA_COLLECTION", "carecontext_chunks")
 DEFAULT_CHROMA_HNSW_SPACE = ChromaHnswSpace.COSINE
+DEFAULT_CANDIDATE_MULTIPLIER = 5
 
 
 def chunk_retrieval_document(request: ChunkDocumentRequest) -> ChunkDocumentResult:
@@ -123,7 +124,7 @@ def search_retrieval_chunks(
 
     # Ask Chroma for a candidate pool larger than top_k. Chroma ranks these by
     # vector distance only; the app reranks them later with hybrid scoring.
-    n_results = min(collection_size, max(top_k * 5, top_k))
+    n_results = min(collection_size, top_k * _candidate_multiplier())
     raw_results = collection.query(
         query_embeddings=[_embeddings_provider().embed_text(query)],
         n_results=n_results,
@@ -200,6 +201,18 @@ def _chroma_hnsw_space() -> ChromaHnswSpace:
 
 def _embeddings_provider() -> Any:
     return build_embeddings_provider()
+
+
+def _candidate_multiplier() -> int:
+    return max(
+        1,
+        int(
+            os.getenv(
+                "CARECONTEXT_RETRIEVAL_CANDIDATE_MULTIPLIER",
+                str(DEFAULT_CANDIDATE_MULTIPLIER),
+            )
+        ),
+    )
 
 
 def _normalize_chunks(

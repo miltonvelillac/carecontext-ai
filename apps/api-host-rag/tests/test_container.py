@@ -65,6 +65,7 @@ def test_build_retrieval_tools_uses_retrieval_mcp_client_with_local_chroma_path(
     assert retrieval_tools.env is not None
     assert retrieval_tools.env["CARECONTEXT_CHROMA_PATH"] == str(tmp_path / "chroma")
     assert retrieval_tools.env["CARECONTEXT_CHROMA_HNSW_SPACE"] == ChromaHnswSpace.COSINE.value
+    assert retrieval_tools.env["CARECONTEXT_RETRIEVAL_CANDIDATE_MULTIPLIER"] == "5"
     assert (
         retrieval_tools.env["CARECONTEXT_EMBEDDINGS_PROVIDER"]
         == RetrievalEmbeddingsProvider.DETERMINISTIC.value
@@ -99,6 +100,14 @@ def test_build_retrieval_tools_passes_configured_min_score() -> None:
 
     assert isinstance(retrieval_tools, RetrievalMcpClient)
     assert retrieval_tools.min_score == 0.6
+
+
+def test_build_retrieval_tools_passes_configured_candidate_multiplier() -> None:
+    retrieval_tools = build_retrieval_tools(Settings(retrieval_candidate_multiplier=8))
+
+    assert isinstance(retrieval_tools, RetrievalMcpClient)
+    assert retrieval_tools.env is not None
+    assert retrieval_tools.env["CARECONTEXT_RETRIEVAL_CANDIDATE_MULTIPLIER"] == "8"
 
 
 def test_build_retrieval_tools_passes_openai_embeddings_settings() -> None:

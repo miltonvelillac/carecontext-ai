@@ -117,3 +117,36 @@ def test_collection_uses_configured_chroma_hnsw_space(
     processing._collection()
 
     assert captured["metadata"] == {"hnsw:space": ChromaHnswSpace.INNER_PRODUCT.value}
+
+
+def test_search_retrieval_chunks_uses_configured_candidate_multiplier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    processing = _load_retrieval_processing_module()
+    captured: dict[str, object] = {}
+
+    class FakeCollection:
+        def count(self) -> int:
+            return 100
+
+        def query(self, **kwargs):
+            captured.update(kwargs)
+            return {
+                "ids": [[]],
+                "documents": [[]],
+                "metadatas": [[]],
+                "distances": [[]],
+            }
+
+    class FakeEmbeddingsProvider:
+        def embed_text(self, text: str) -> list[float]:
+            del text
+            return [0.1, 0.2, 0.3]
+
+    monkeypatch.setenv("CARECONTEXT_RETRIEVAL_CANDIDATE_MULTIPLIER", "8")
+    monkeypatch.setattr(processing, "_collection", lambda: FakeCollection())
+    monkeypatch.setattr(processing, "_embeddings_provider", lambda: FakeEmbeddingsProvider())
+
+    processing.search_retrieval_chunks("sleep stress", top_k=3)
+
+    assert captured["n_results"] == 24

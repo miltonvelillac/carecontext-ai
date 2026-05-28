@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     chroma_host: str | None = None
     chroma_port: int = 8000
     chroma_hnsw_space: ChromaHnswSpace = ChromaHnswSpace.COSINE
+    retrieval_candidate_multiplier: int = Field(default=5, ge=1, le=50)
     retrieval_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
 
     document_mcp_transport: McpTransport = McpTransport.STDIO
