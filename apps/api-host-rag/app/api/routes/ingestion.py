@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
-from app.api.dependencies import get_document_tools, get_retrieval_tools
+from app.api.dependencies import get_document_repository, get_document_tools, get_retrieval_tools
+from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.document_tools import DocumentToolsPort
 from app.ports.retrieval_tools import RetrievalToolsPort
 from app.schemas.common import LanguageCode
@@ -18,6 +19,7 @@ async def upload_document_endpoint(
     language: LanguageCode = Form(default=LanguageCode.AUTO),
     document_tools: DocumentToolsPort = Depends(get_document_tools),
     retrieval_tools: RetrievalToolsPort = Depends(get_retrieval_tools),
+    document_repository: DocumentRepositoryPort = Depends(get_document_repository),
 ) -> IngestionJobResponse:
     content = await file.read()
     return await upload_document(
@@ -29,6 +31,7 @@ async def upload_document_endpoint(
         language=language,
         document_tools=document_tools,
         retrieval_tools=retrieval_tools,
+        document_repository=document_repository,
     )
 
 

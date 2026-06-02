@@ -27,9 +27,14 @@ Response:
 
 ## `POST /api/ingestion/upload`
 
-Uploads a user document for the document pipeline. The current implementation
-returns a mock accepted response; extraction, chunking, embeddings, and indexing
-will be added later.
+Uploads a user PDF and runs the current ingestion pipeline:
+
+1. Extract text through the Document MCP server.
+2. Clean extracted text through the Document MCP server.
+3. Infer lightweight metadata through the Document MCP server.
+4. Chunk the document through the Retrieval MCP server.
+5. Upsert chunks into ChromaDB through the Retrieval MCP server.
+6. Store the document read model in the local document repository.
 
 Request:
 
@@ -44,16 +49,16 @@ Response model: `IngestionJobResponse`
 ```json
 {
   "doc_id": "upload-sleep.pdf",
-  "status": "uploaded",
+  "status": "indexed",
   "source_type": "uploaded",
-  "message": "Upload accepted. Extraction and indexing are not implemented yet.",
+  "message": "Upload accepted and processed. Inserted chunks: 1.",
   "document": {
     "doc_id": "upload-sleep.pdf",
     "title": "sleep.pdf",
     "source_type": "uploaded",
     "topic_tags": ["sleep", "stress"],
     "language": "auto",
-    "status": "uploaded",
+    "status": "indexed",
     "created_at": null,
     "quality_score": null
   }
@@ -78,9 +83,17 @@ Response model: `CuratedSyncResponse`
 
 ## `POST /api/query/text`
 
-Runs a text query through the RAG contract. The current implementation returns
-mock retrieved context and a mock citation without calling embeddings, Chroma,
-MCP, or any LLM provider.
+Runs a text query through the baseline RAG flow:
+
+1. Classify safety risk.
+2. Redirect crisis or high-risk requests before retrieval.
+3. Retrieve indexed chunks through the Retrieval MCP server.
+4. Synthesize an answer through the configured answer synthesizer.
+5. Return citations and retrieved context from the selected chunks.
+
+By default, the app uses mock LLM behavior and deterministic local embeddings.
+When configured with OpenAI providers, LLM and embedding calls use the OpenAI
+adapters behind the same ports.
 
 Request model: `TextQueryRequest`
 
@@ -102,17 +115,17 @@ Response model: `RagAnswerResponse`
 
 ```json
 {
-  "answer": "Mock answer: consistent sleep routines can support sleep quality and may help with stress management. This response is educational and uses a placeholder citation until retrieval and synthesis are implemented.",
+  "answer": "Consistent sleep routines can support sleep quality and may help with stress management. This assistant is educational and not a substitute for professional care.",
   "citations": [
     {
-      "doc_id": "curated-sleep-basics",
-      "title": "Sleep Hygiene Basics",
-      "chunk_id": "curated-sleep-basics-chunk-001",
+      "doc_id": "upload-sleep.pdf",
+      "title": "Sleep Guide",
+      "chunk_id": "upload-sleep.pdf-chunk-001",
       "snippet": "Consistent sleep routines, reduced evening stimulation, and regular wake times can support sleep quality and may help people manage stress.",
       "section": "Sleep routines",
       "score": 0.92,
       "metadata": {
-        "mock": "true"
+        "filename": "sleep.pdf"
       }
     }
   ],
@@ -125,14 +138,14 @@ Response model: `RagAnswerResponse`
   },
   "retrieved_context": [
     {
-      "doc_id": "curated-sleep-basics",
-      "title": "Sleep Hygiene Basics",
-      "chunk_id": "curated-sleep-basics-chunk-001",
+      "doc_id": "upload-sleep.pdf",
+      "title": "Sleep Guide",
+      "chunk_id": "upload-sleep.pdf-chunk-001",
       "snippet": "Consistent sleep routines, reduced evening stimulation, and regular wake times can support sleep quality and may help people manage stress.",
       "score": 0.92,
       "section": "Sleep routines",
       "metadata": {
-        "mock": "true"
+        "filename": "sleep.pdf"
       }
     }
   ],
@@ -214,7 +227,8 @@ Response model: `RagAnswerResponse`
 
 ## `GET /api/documents`
 
-Lists known documents and indexing status.
+Lists documents stored in the local document repository. Uploaded documents are
+saved here after successful indexing.
 
 Response model: `DocumentListResponse`
 
@@ -222,9 +236,9 @@ Response model: `DocumentListResponse`
 {
   "documents": [
     {
-      "doc_id": "curated-sleep-basics",
-      "title": "Sleep Hygiene Basics",
-      "source_type": "curated",
+      "doc_id": "upload-sleep.pdf",
+      "title": "Sleep Guide",
+      "source_type": "uploaded",
       "language": "en",
       "status": "indexed",
       "topic_tags": ["sleep", "stress"],
@@ -237,15 +251,16 @@ Response model: `DocumentListResponse`
 
 ## `GET /api/documents/{doc_id}`
 
-Returns document metadata and indexed chunk summary.
+Returns document metadata and indexed chunk summaries from the local document
+repository.
 
 Response model: `DocumentDetail`
 
 ```json
 {
-  "doc_id": "curated-sleep-basics",
-  "title": "Sleep Hygiene Basics",
-  "source_type": "curated",
+  "doc_id": "upload-sleep.pdf",
+  "title": "Sleep Guide",
+  "source_type": "uploaded",
   "language": "en",
   "status": "indexed",
   "topic_tags": ["sleep", "stress"],
@@ -253,23 +268,23 @@ Response model: `DocumentDetail`
   "created_at": null,
   "chunks": [
     {
-      "doc_id": "curated-sleep-basics",
-      "chunk_id": "curated-sleep-basics-chunk-001",
-      "title": "Sleep Hygiene Basics",
+      "doc_id": "upload-sleep.pdf",
+      "chunk_id": "upload-sleep.pdf-chunk-001",
+      "title": "Sleep Guide",
       "text": "Consistent sleep routines, reduced evening stimulation, and regular wake times can support sleep quality and may help people manage stress.",
-      "source_type": "curated",
+      "source_type": "uploaded",
       "topic_tags": ["sleep", "stress"],
       "language": "en",
       "section": "Sleep routines",
       "created_at": null,
       "quality_score": null,
       "metadata": {
-        "mock": "true"
+        "filename": "sleep.pdf"
       }
     }
   ],
   "metadata": {
-    "mock": "true"
+    "filename": "sleep.pdf"
   }
 }
 ```

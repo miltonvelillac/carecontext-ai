@@ -66,7 +66,17 @@ def test_upload_indexes_document_and_text_query_returns_real_citation(tmp_path: 
         assert upload_response.status_code == 200
         upload_payload = upload_response.json()
         assert upload_payload["doc_id"] == "upload-sleep.pdf"
+        assert upload_payload["status"] == "indexed"
+        assert upload_payload["document"]["status"] == "indexed"
         assert upload_payload["message"] == "Upload accepted and processed. Inserted chunks: 1."
+
+        documents_response = client.get("/api/documents")
+        assert documents_response.status_code == 200
+        documents_payload = documents_response.json()
+
+        document_response = client.get("/api/documents/upload-sleep.pdf")
+        assert document_response.status_code == 200
+        document_payload = document_response.json()
 
         query_response = client.post(
             "/api/query/text",
@@ -85,6 +95,23 @@ def test_upload_indexes_document_and_text_query_returns_real_citation(tmp_path: 
 
     app.dependency_overrides.clear()
 
+    assert documents_payload["documents"] == [
+        {
+            "doc_id": "upload-sleep.pdf",
+            "title": "Sleep Guide",
+            "source_type": "uploaded",
+            "language": "en",
+            "status": "indexed",
+            "topic_tags": ["sleep", "stress"],
+            "chunk_count": 1,
+            "created_at": None,
+        }
+    ]
+    assert document_payload["doc_id"] == "upload-sleep.pdf"
+    assert document_payload["status"] == "indexed"
+    assert document_payload["chunk_count"] == 1
+    assert document_payload["chunks"][0]["chunk_id"] == "upload-sleep.pdf-chunk-001"
+    assert document_payload["metadata"]["source"] == "fake-document-tools"
     assert query_payload["citations"]
     assert query_payload["citations"][0]["doc_id"] == "upload-sleep.pdf"
     assert query_payload["citations"][0]["chunk_id"] == "upload-sleep.pdf-chunk-001"

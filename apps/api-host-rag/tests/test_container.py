@@ -7,8 +7,10 @@ from app.adapters.mcp.retrieval_mcp_client import RetrievalMcpClient
 from app.adapters.openai.llm import OpenAiLlmProvider
 from app.chains.langchain_answer_synthesizer import LangChainAnswerSynthesizer
 from app.chains.langchain_safety_classifier import LangChainSafetyClassifier
+from app.adapters.local.document_repository import LocalJsonDocumentRepository
 from app.composition.container import (
     build_answer_synthesizer,
+    build_document_repository,
     build_llm_provider,
     build_retrieval_tools,
     build_safety_classifier,
@@ -52,6 +54,13 @@ def test_build_safety_classifier_uses_langchain_workflow() -> None:
     safety_classifier = build_safety_classifier(MockLlmProvider())
 
     assert isinstance(safety_classifier, LangChainSafetyClassifier)
+
+
+def test_build_document_repository_uses_local_json_repository(tmp_path: Path) -> None:
+    repository = build_document_repository(Settings(data_dir=str(tmp_path)))
+
+    assert isinstance(repository, LocalJsonDocumentRepository)
+    assert repository.path == tmp_path / "documents.json"
 
 
 def test_build_retrieval_tools_uses_retrieval_mcp_client_with_local_chroma_path(

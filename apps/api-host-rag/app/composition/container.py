@@ -13,7 +13,7 @@ from carecontext_contracts.common import McpTransport, ProviderName
 from carecontext_contracts.retrieval_mcp import RetrievalEmbeddingsProvider
 from app.chains.langchain_answer_synthesizer import LangChainAnswerSynthesizer
 from app.chains.langchain_safety_classifier import LangChainSafetyClassifier
-from app.adapters.mock.document_repository import MockDocumentRepository
+from app.adapters.local.document_repository import LocalJsonDocumentRepository
 from app.adapters.mock.llm import MockLlmProvider
 from app.adapters.mcp.document_mcp_client import DocumentMcpClient
 from app.adapters.mcp.retrieval_mcp_client import RetrievalMcpClient
@@ -151,8 +151,7 @@ def build_retrieval_tools(settings: Settings) -> RetrievalToolsPort:
 def build_document_repository(settings: Settings) -> DocumentRepositoryPort:
     """Factory function for the document repository implementation."""
 
-    del settings
-    return MockDocumentRepository()
+    return LocalJsonDocumentRepository(settings.data_dir)
 
 
 def _build_retrieval_mcp_env(settings: Settings) -> dict[str, str]:

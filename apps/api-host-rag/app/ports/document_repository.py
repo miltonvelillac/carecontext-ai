@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from app.schemas.documents import DocumentDetail, DocumentSummary
+from app.schemas.documents import DocumentChunk, DocumentDetail, DocumentMetadata, DocumentSummary
 
 
 class DocumentRepositoryPort(Protocol):
@@ -14,4 +14,12 @@ class DocumentRepositoryPort(Protocol):
         ...
 
     async def get_document(self, doc_id: str) -> DocumentDetail | None:
+        ...
+
+    async def save_document(
+        self,
+        document: DocumentMetadata,
+        chunks: list[DocumentChunk],
+        metadata: dict[str, str] | None = None,
+    ) -> DocumentDetail:
         ...

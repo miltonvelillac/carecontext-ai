@@ -4,6 +4,7 @@ Service Layer: routes translate HTTP into Python values, then this module
 coordinates ports such as document processing and retrieval indexing.
 """
 
+from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.document_tools import DocumentToolsPort
 from app.ports.retrieval_tools import RetrievalToolsPort
 from app.schemas.common import DocumentStatus, LanguageCode, SourceType
@@ -27,6 +28,7 @@ async def upload_document(
     language: LanguageCode,
     document_tools: DocumentToolsPort,
     retrieval_tools: RetrievalToolsPort,
+    document_repository: DocumentRepositoryPort,
 ) -> IngestionJobResponse:
     safe_filename = filename or "document"
     doc_id = f"upload-{safe_filename}"
@@ -44,7 +46,7 @@ async def upload_document(
         source_type=SourceType.UPLOADED,
         topic_tags=resolved_topic_tags,
         language=resolved_language,
-        status=DocumentStatus.UPLOADED,
+        status=DocumentStatus.INDEXED,
         quality_score=tool_metadata.quality_score,
     )
     chunks = await retrieval_tools.chunk_document(
@@ -59,9 +61,14 @@ async def upload_document(
         metadata={**extracted.metadata, **tool_metadata.metadata},
     )
     upsert_result = await retrieval_tools.upsert_chunks(chunks)
+    await document_repository.save_document(
+        document,
+        chunks,
+        metadata={**extracted.metadata, **tool_metadata.metadata},
+    )
     return IngestionJobResponse(
         doc_id=doc_id,
-        status=DocumentStatus.UPLOADED,
+        status=DocumentStatus.INDEXED,
         source_type=SourceType.UPLOADED,
         message=(
             "Upload accepted and processed. "
