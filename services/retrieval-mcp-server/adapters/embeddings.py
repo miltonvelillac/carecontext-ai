@@ -2,21 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import math
-import os
 import re
-from typing import Protocol
 
 from carecontext_contracts.retrieval_mcp import RetrievalEmbeddingsProvider
+from core.settings import RetrievalSettings
 from openai import OpenAI
+from ports.embeddings import EmbeddingsProviderPort
 
 DEFAULT_EMBEDDING_DIMENSIONS = 384
 DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 TOKEN_PATTERN = re.compile(r"[a-zA-Z\u00c0-\u00ff0-9]+")
-
-
-class EmbeddingsProvider(Protocol):
-    def embed_text(self, text: str) -> list[float]:
-        ...
 
 
 class DeterministicEmbeddingsProvider:
@@ -63,28 +58,25 @@ class OpenAiEmbeddingsProvider:
         return list(response.data[0].embedding)
 
 
-def build_embeddings_provider() -> EmbeddingsProvider:
-    provider = os.getenv(
-        "CARECONTEXT_EMBEDDINGS_PROVIDER",
-        RetrievalEmbeddingsProvider.DETERMINISTIC.value,
-    ).lower()
-    dimensions = int(os.getenv("CARECONTEXT_EMBEDDING_DIMENSIONS", str(DEFAULT_EMBEDDING_DIMENSIONS)))
+def build_embeddings_provider(
+    settings: RetrievalSettings | None = None,
+) -> EmbeddingsProviderPort:
+    settings = settings or RetrievalSettings.from_env()
 
-    if provider == RetrievalEmbeddingsProvider.DETERMINISTIC:
-        return DeterministicEmbeddingsProvider(dimensions=dimensions)
-    if provider == RetrievalEmbeddingsProvider.OPENAI:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
+    if settings.embeddings_provider == RetrievalEmbeddingsProvider.DETERMINISTIC:
+        return DeterministicEmbeddingsProvider(dimensions=settings.embedding_dimensions)
+    if settings.embeddings_provider == RetrievalEmbeddingsProvider.OPENAI:
+        if not settings.openai_api_key:
             raise ValueError(
                 "OPENAI_API_KEY is required when "
                 f"CARECONTEXT_EMBEDDINGS_PROVIDER={RetrievalEmbeddingsProvider.OPENAI.value}."
             )
         return OpenAiEmbeddingsProvider(
-            api_key=api_key,
-            model=os.getenv("OPENAI_EMBEDDING_MODEL", DEFAULT_OPENAI_EMBEDDING_MODEL),
-            dimensions=dimensions,
+            api_key=settings.openai_api_key,
+            model=settings.openai_embedding_model,
+            dimensions=settings.embedding_dimensions,
         )
-    raise ValueError(f"Unsupported embeddings provider '{provider}'.")
+    raise ValueError(f"Unsupported embeddings provider '{settings.embeddings_provider}'.")
 
 
 def tokenize_text(text: str) -> list[str]:

@@ -11,7 +11,7 @@ def _load_retrievers_module():
     sys.path.insert(0, str(server_dir))
     spec = importlib.util.spec_from_file_location(
         "retrieval_retrievers",
-        server_dir / "retrievers.py",
+        server_dir / "services" / "retrievers.py",
     )
     if spec is None or spec.loader is None:
         raise RuntimeError("Could not load retrieval retrievers.py")

@@ -33,7 +33,7 @@ def _load_embeddings_module():
     sys.path.insert(0, str(server_dir))
     spec = importlib.util.spec_from_file_location(
         "retrieval_embeddings",
-        server_dir / "embeddings.py",
+        server_dir / "adapters" / "embeddings.py",
     )
     if spec is None or spec.loader is None:
         raise RuntimeError("Could not load retrieval embeddings.py")

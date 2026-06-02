@@ -9,12 +9,7 @@ from carecontext_contracts.retrieval_mcp import (
     RetrievedChunk,
     UpsertChunksResult,
 )
-from document_processing import (
-    chunk_retrieval_document,
-    rerank_retrieval_results,
-    search_retrieval_chunks,
-    upsert_retrieval_chunks,
-)
+from composition.container import get_container
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("carecontext-retrieval-tools")
@@ -23,13 +18,13 @@ mcp = FastMCP("carecontext-retrieval-tools")
 @mcp.tool()
 def chunk_document(request: ChunkDocumentRequest) -> ChunkDocumentResult:
     """Split document text into retrieval-ready chunks."""
-    return chunk_retrieval_document(request)
+    return get_container().chunking_service.chunk_document(request)
 
 
 @mcp.tool()
 def upsert_chunks(chunks: list[RetrievalDocumentChunk]) -> UpsertChunksResult:
     """Insert or update retrieval-ready chunks in ChromaDB."""
-    return upsert_retrieval_chunks(chunks)
+    return get_container().indexing_service.upsert_chunks(chunks)
 
 
 @mcp.tool()
@@ -39,7 +34,7 @@ def hybrid_search(
     filters: RetrievalFilter | None = None,
 ) -> HybridSearchResult:
     """Search chunks with vector similarity plus lightweight keyword scoring."""
-    return search_retrieval_chunks(query, top_k, filters)
+    return get_container().retrieval_service.search_chunks(query, top_k, filters)
 
 
 @mcp.tool()
@@ -49,7 +44,7 @@ def rerank_results(
     top_k: int,
 ) -> RerankResultsResult:
     """Rerank existing retrieval results with deterministic keyword overlap."""
-    return rerank_retrieval_results(query, results, top_k)
+    return get_container().reranking_service.rerank_results(query, results, top_k)
 
 
 def main() -> None:

@@ -4,7 +4,7 @@ from typing import Any
 
 from carecontext_contracts.common import LanguageCode
 from carecontext_contracts.retrieval_mcp import RetrievalFilter, RetrievedChunk
-from embeddings import tokenize_text
+from adapters.embeddings import tokenize_text
 
 
 class HybridChunkRetriever:
