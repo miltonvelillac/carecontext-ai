@@ -10,6 +10,13 @@ class UploadDocumentRequestMetadata(BaseModel):
     language: LanguageCode = LanguageCode.AUTO
 
 
+class TextIngestionRequest(BaseModel):
+    text: str = Field(min_length=1)
+    title: str | None = None
+    topic_tags: list[str] = Field(default_factory=list)
+    language: LanguageCode = LanguageCode.AUTO
+
+
 class IngestionJobResponse(BaseModel):
     doc_id: str
     status: DocumentStatus
@@ -23,4 +30,3 @@ class CuratedSyncResponse(BaseModel):
     indexed_documents: int = Field(default=0, ge=0)
     skipped_documents: int = Field(default=0, ge=0)
     failed_documents: int = Field(default=0, ge=0)
-

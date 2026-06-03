@@ -5,8 +5,8 @@ from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.document_tools import DocumentToolsPort
 from app.ports.retrieval_tools import RetrievalToolsPort
 from app.schemas.common import LanguageCode
-from app.schemas.ingestion import CuratedSyncResponse, IngestionJobResponse
-from app.services.ingestion_service import sync_curated_corpus, upload_document
+from app.schemas.ingestion import CuratedSyncResponse, IngestionJobResponse, TextIngestionRequest
+from app.services.ingestion_service import ingest_text, sync_curated_corpus, upload_document
 
 router = APIRouter(prefix="/api/ingestion", tags=["ingestion"])
 
@@ -30,6 +30,22 @@ async def upload_document_endpoint(
         topic_tags=topic_tags,
         language=language,
         document_tools=document_tools,
+        retrieval_tools=retrieval_tools,
+        document_repository=document_repository,
+    )
+
+
+@router.post("/text", response_model=IngestionJobResponse)
+async def ingest_text_endpoint(
+    request: TextIngestionRequest,
+    retrieval_tools: RetrievalToolsPort = Depends(get_retrieval_tools),
+    document_repository: DocumentRepositoryPort = Depends(get_document_repository),
+) -> IngestionJobResponse:
+    return await ingest_text(
+        text=request.text,
+        title=request.title,
+        topic_tags=request.topic_tags,
+        language=request.language,
         retrieval_tools=retrieval_tools,
         document_repository=document_repository,
     )

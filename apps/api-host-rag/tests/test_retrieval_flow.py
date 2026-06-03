@@ -117,3 +117,43 @@ def test_upload_indexes_document_and_text_query_returns_real_citation(tmp_path: 
     assert "sleep routines" in query_payload["citations"][0]["snippet"].lower()
     assert query_payload["retrieved_context"][0]["doc_id"] == "upload-sleep.pdf"
     assert "placeholder citation" not in query_payload["answer"].lower()
+
+
+def test_text_ingestion_indexes_text_and_query_returns_citation(tmp_path: Path) -> None:
+    app = create_app()
+    app.state.settings = Settings(data_dir=str(tmp_path), chroma_host=None)
+    app.state.container = AppContainer(app.state.settings)
+
+    with TestClient(app) as client:
+        ingestion_response = client.post(
+            "/api/ingestion/text",
+            json={
+                "title": "Breathing Notes",
+                "text": "Slow breathing exercises may help some people reduce acute stress.",
+                "topic_tags": ["stress", "breathing"],
+                "language": "en",
+            },
+        )
+        assert ingestion_response.status_code == 200
+        ingestion_payload = ingestion_response.json()
+
+        query_response = client.post(
+            "/api/query/text",
+            json={
+                "query": "What can help with acute stress?",
+                "top_k": 5,
+                "filters": {
+                    "source_types": ["uploaded"],
+                    "topic_tags": ["stress"],
+                    "language": "en",
+                },
+            },
+        )
+        assert query_response.status_code == 200
+        query_payload = query_response.json()
+
+    assert ingestion_payload["status"] == "indexed"
+    assert ingestion_payload["doc_id"].startswith("text-breathing-notes-")
+    assert query_payload["citations"]
+    assert query_payload["citations"][0]["doc_id"].startswith("text-breathing-notes-")
+    assert "breathing" in query_payload["citations"][0]["snippet"].lower()

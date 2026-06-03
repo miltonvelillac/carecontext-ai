@@ -5,6 +5,7 @@ coordinates ports such as document processing and retrieval indexing.
 """
 
 from datetime import UTC, datetime
+import re
 
 from app.ports.document_repository import DocumentRepositoryPort
 from app.ports.document_tools import DocumentToolsPort
@@ -18,6 +19,11 @@ def _parse_topic_tags(topic_tags: str | None) -> list[str]:
     if not topic_tags:
         return []
     return [tag.strip() for tag in topic_tags.split(",") if tag.strip()]
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
+    return slug or "text"
 
 
 def _metadata_with_error(
@@ -199,6 +205,108 @@ async def upload_document(
         source_type=SourceType.UPLOADED,
         message=(
             "Upload accepted and processed. "
+            f"Inserted chunks: {upsert_result.inserted_count}."
+        ),
+        document=document,
+    )
+
+
+async def ingest_text(
+    *,
+    text: str,
+    title: str | None,
+    topic_tags: list[str],
+    language: LanguageCode,
+    retrieval_tools: RetrievalToolsPort,
+    document_repository: DocumentRepositoryPort,
+) -> IngestionJobResponse:
+    created_at = datetime.now(UTC)
+    resolved_title = title or "Pasted text"
+    doc_id = f"text-{_slugify(resolved_title)}-{int(created_at.timestamp())}"
+    cleaned_text = text.strip()
+    metadata = {
+        "input_type": "pasted_text",
+        "text_length": str(len(cleaned_text)),
+    }
+
+    if not cleaned_text:
+        return await _save_failed_document(
+            doc_id=doc_id,
+            title=resolved_title,
+            topic_tags=topic_tags,
+            language=language,
+            quality_score=0.0,
+            message="Text ingestion failed: the submitted text is empty.",
+            metadata=_metadata_with_error(
+                metadata,
+                error_code="empty_text",
+                error_message="Submitted text is empty after trimming whitespace.",
+            ),
+            document_repository=document_repository,
+        )
+
+    document = DocumentMetadata(
+        doc_id=doc_id,
+        title=resolved_title,
+        source_type=SourceType.UPLOADED,
+        topic_tags=topic_tags,
+        language=language,
+        status=DocumentStatus.INDEXED,
+        created_at=created_at,
+        quality_score=min(1.0, round(len(cleaned_text) / 5000, 2)),
+    )
+    chunks = await retrieval_tools.chunk_document(
+        doc_id=doc_id,
+        title=resolved_title,
+        text=cleaned_text,
+        source_type=SourceType.UPLOADED,
+        topic_tags=topic_tags,
+        language=language,
+        section="Pasted text",
+        quality_score=document.quality_score,
+        metadata=metadata,
+    )
+    if not chunks:
+        return await _save_failed_document(
+            doc_id=doc_id,
+            title=resolved_title,
+            topic_tags=topic_tags,
+            language=language,
+            quality_score=document.quality_score,
+            message="Text ingestion failed: the text did not produce retrieval chunks.",
+            metadata=_metadata_with_error(
+                metadata,
+                error_code="empty_chunk_set",
+                error_message="The retrieval chunker returned no chunks.",
+            ),
+            document_repository=document_repository,
+        )
+
+    chunks = _timestamp_chunks(chunks, created_at)
+    upsert_result = await retrieval_tools.upsert_chunks(chunks)
+    if upsert_result.inserted_count + upsert_result.updated_count == 0:
+        return await _save_failed_document(
+            doc_id=doc_id,
+            title=resolved_title,
+            topic_tags=topic_tags,
+            language=language,
+            quality_score=document.quality_score,
+            message="Text ingestion failed: no chunks were inserted or updated.",
+            metadata=_metadata_with_error(
+                metadata,
+                error_code="index_upsert_empty",
+                error_message="Retrieval index reported zero inserted and zero updated chunks.",
+            ),
+            document_repository=document_repository,
+        )
+
+    await document_repository.save_document(document, chunks, metadata=metadata)
+    return IngestionJobResponse(
+        doc_id=doc_id,
+        status=DocumentStatus.INDEXED,
+        source_type=SourceType.UPLOADED,
+        message=(
+            "Text accepted and processed. "
             f"Inserted chunks: {upsert_result.inserted_count}."
         ),
         document=document,
