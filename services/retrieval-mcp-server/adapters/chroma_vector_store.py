@@ -68,6 +68,21 @@ class ChromaVectorStoreAdapter:
 
         return _query_candidates(self._get_collection().query(**query_arguments))
 
+    def list_chunks(
+        self,
+        *,
+        where: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return stored chunks without vector ranking for lexical fallback."""
+
+        get_arguments: dict[str, Any] = {
+            "include": ["documents", "metadatas"],
+        }
+        if where:
+            get_arguments["where"] = where
+
+        return _get_candidates(self._get_collection().get(**get_arguments))
+
     def _get_collection(self) -> Any:
         if self._collection is None:
             self._collection = self._get_client().get_or_create_collection(
@@ -124,6 +139,23 @@ def _query_candidates(raw_results: dict[str, Any]) -> list[dict[str, Any]]:
                 "document": documents[index] or "",
                 "metadata": metadatas[index] or {},
                 "distance": distances[index],
+            }
+        )
+    return candidates
+
+
+def _get_candidates(raw_results: dict[str, Any]) -> list[dict[str, Any]]:
+    ids = raw_results.get("ids", [])
+    documents = raw_results.get("documents", [])
+    metadatas = raw_results.get("metadatas", [])
+    candidates: list[dict[str, Any]] = []
+    for index, chunk_id in enumerate(ids):
+        candidates.append(
+            {
+                "chunk_id": chunk_id,
+                "document": documents[index] or "",
+                "metadata": metadatas[index] or {},
+                "distance": 0.0,
             }
         )
     return candidates

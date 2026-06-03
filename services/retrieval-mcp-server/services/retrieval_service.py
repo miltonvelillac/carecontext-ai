@@ -58,6 +58,10 @@ class RetrievalService:
             n_results=n_results,
             where=_chroma_where_filter(retrieval_filter),
         )
+        candidates = _merge_candidates(
+            candidates,
+            self._lexical_candidates(query, retrieval_filter),
+        )
 
         # Apply metadata filters, compute hybrid scores, sort by relevance, and
         # apply the optional min_score threshold.
@@ -65,6 +69,19 @@ class RetrievalService:
 
         # Return at most top_k chunks after reranking and threshold filtering.
         return HybridSearchResult(results=ranked[:top_k])
+
+    def _lexical_candidates(
+        self,
+        query: str,
+        filters: RetrievalFilter | None,
+    ) -> list[dict[str, Any]]:
+        """Find exact keyword matches that vector search may have missed."""
+
+        return [
+            candidate
+            for candidate in self.vector_store.list_chunks(where=_chroma_where_filter(filters))
+            if self.retriever.keyword_overlap(candidate["document"], query) > 0
+        ]
 
 
 def _normalize_filter(filters: dict[str, Any] | RetrievalFilter | None) -> RetrievalFilter | None:
@@ -102,3 +119,18 @@ def _chroma_where_filter(filters: RetrievalFilter | None) -> dict[str, Any] | No
     if len(conditions) == 1:
         return conditions[0]
     return {"$and": conditions}
+
+
+def _merge_candidates(
+    vector_candidates: list[dict[str, Any]],
+    lexical_candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Combine vector and lexical candidates while keeping vector distances when present."""
+
+    merged: dict[str, dict[str, Any]] = {
+        str(candidate["chunk_id"]): candidate
+        for candidate in lexical_candidates
+    }
+    for candidate in vector_candidates:
+        merged[str(candidate["chunk_id"])] = candidate
+    return list(merged.values())

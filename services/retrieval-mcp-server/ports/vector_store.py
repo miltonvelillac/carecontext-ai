@@ -38,3 +38,11 @@ class VectorStorePort(Protocol):
     ) -> list[dict[str, Any]]:
         """Query chunks and return normalized candidate dictionaries."""
         ...
+
+    def list_chunks(
+        self,
+        *,
+        where: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """List chunks for deterministic lexical fallback."""
+        ...

@@ -88,6 +88,10 @@ class CapturingVectorStore:
         self.query_calls.append(kwargs)
         return self.candidates
 
+    def list_chunks(self, **kwargs) -> list[dict]:
+        del kwargs
+        return self.candidates
+
 
 def _retrieval_service(*, vector_store: CapturingVectorStore, candidate_multiplier: int = 5):
     retrieval_service = _load_server_module("retrieval_service", "services/retrieval_service.py")
@@ -174,6 +178,58 @@ def test_search_retrieval_chunks_uses_configured_candidate_multiplier() -> None:
     )
 
     assert vector_store.query_calls[0]["n_results"] == 24
+
+
+def test_search_retrieval_chunks_includes_exact_keyword_fallback() -> None:
+    vector_store = CapturingVectorStore(
+        count=100,
+        candidates=[
+            {
+                "chunk_id": "irrelevant-vector-hit",
+                "document": "General content about wellness.",
+                "metadata": {
+                    "doc_id": "doc-1",
+                    "chunk_id": "irrelevant-vector-hit",
+                    "title": "General Guide",
+                    "source_type": "uploaded",
+                    "topic_tags": "",
+                    "language": "en",
+                },
+                "distance": 0.2,
+            },
+        ],
+    )
+
+    class LexicalFallbackVectorStore(CapturingVectorStore):
+        def list_chunks(self, **kwargs) -> list[dict]:
+            del kwargs
+            return [
+                {
+                    "chunk_id": "photophobia-keyword-hit",
+                    "document": "Photophobia is one of the most common symptoms in migraine.",
+                    "metadata": {
+                        "doc_id": "doc-2",
+                        "chunk_id": "photophobia-keyword-hit",
+                        "title": "Photophobia in Migraine",
+                        "source_type": "uploaded",
+                        "topic_tags": "",
+                        "language": "en",
+                    },
+                    "distance": 0.0,
+                }
+            ]
+
+    vector_store = LexicalFallbackVectorStore(
+        count=100,
+        candidates=vector_store.candidates,
+    )
+
+    result = _retrieval_service(vector_store=vector_store).search_chunks(
+        "Photophobia",
+        top_k=1,
+    )
+
+    assert [chunk.chunk_id for chunk in result.results] == ["photophobia-keyword-hit"]
 
 
 def test_search_retrieval_chunks_passes_supported_metadata_filters_to_chroma() -> None:
