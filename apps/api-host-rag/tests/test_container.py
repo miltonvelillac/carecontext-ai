@@ -56,6 +56,18 @@ def test_build_safety_classifier_uses_langchain_workflow() -> None:
     assert isinstance(safety_classifier, LangChainSafetyClassifier)
 
 
+def test_settings_treat_optional_empty_strings_as_none() -> None:
+    settings = Settings(
+        openai_llm_model="",
+        retrieval_min_score="",
+        chroma_host="",
+    )
+
+    assert settings.openai_llm_model is None
+    assert settings.retrieval_min_score is None
+    assert settings.chroma_host is None
+
+
 def test_build_document_repository_uses_local_json_repository(tmp_path: Path) -> None:
     repository = build_document_repository(Settings(data_dir=str(tmp_path)))
 

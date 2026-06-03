@@ -1,5 +1,5 @@
 from carecontext_contracts.common import ChromaHnswSpace, McpTransport, ProviderName, RuntimeCommand
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     environment: str = "local"
     log_level: str = "INFO"
+    cors_allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     llm_provider: ProviderName = ProviderName.MOCK
     embeddings_provider: ProviderName = ProviderName.MOCK
@@ -39,3 +40,23 @@ class Settings(BaseSettings):
     retrieval_mcp_command: RuntimeCommand = RuntimeCommand.PYTHON
     retrieval_mcp_args: str | None = None
     retrieval_mcp_cwd: str | None = None
+
+    @field_validator(
+        "openai_api_key",
+        "openai_llm_model",
+        "openai_embedding_model",
+        "openai_stt_model",
+        "openai_tts_model",
+        "chroma_host",
+        "retrieval_min_score",
+        "document_mcp_args",
+        "document_mcp_cwd",
+        "retrieval_mcp_args",
+        "retrieval_mcp_cwd",
+        mode="before",
+    )
+    @classmethod
+    def empty_string_as_none(cls, value: object) -> object:
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value

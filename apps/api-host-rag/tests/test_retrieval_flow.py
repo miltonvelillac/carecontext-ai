@@ -95,22 +95,21 @@ def test_upload_indexes_document_and_text_query_returns_real_citation(tmp_path: 
 
     app.dependency_overrides.clear()
 
-    assert documents_payload["documents"] == [
-        {
-            "doc_id": "upload-sleep.pdf",
-            "title": "Sleep Guide",
-            "source_type": "uploaded",
-            "language": "en",
-            "status": "indexed",
-            "topic_tags": ["sleep", "stress"],
-            "chunk_count": 1,
-            "created_at": None,
-        }
-    ]
+    assert len(documents_payload["documents"]) == 1
+    document_summary = documents_payload["documents"][0]
+    assert document_summary["doc_id"] == "upload-sleep.pdf"
+    assert document_summary["title"] == "Sleep Guide"
+    assert document_summary["source_type"] == "uploaded"
+    assert document_summary["language"] == "en"
+    assert document_summary["status"] == "indexed"
+    assert document_summary["topic_tags"] == ["sleep", "stress"]
+    assert document_summary["chunk_count"] == 1
+    assert document_summary["created_at"] is not None
     assert document_payload["doc_id"] == "upload-sleep.pdf"
     assert document_payload["status"] == "indexed"
     assert document_payload["chunk_count"] == 1
     assert document_payload["chunks"][0]["chunk_id"] == "upload-sleep.pdf-chunk-001"
+    assert document_payload["chunks"][0]["created_at"] is not None
     assert document_payload["metadata"]["source"] == "fake-document-tools"
     assert query_payload["citations"]
     assert query_payload["citations"][0]["doc_id"] == "upload-sleep.pdf"

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import documents, health, ingestion, query
 from app.composition.container import AppContainer
@@ -10,6 +11,17 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.api_title, version=settings.api_version)
     app.state.settings = settings
     app.state.container = AppContainer(settings)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            origin.strip()
+            for origin in settings.cors_allowed_origins.split(",")
+            if origin.strip()
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     app.include_router(health.router)
     app.include_router(ingestion.router)
